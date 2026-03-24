@@ -34,6 +34,8 @@ services:
       - key: CLIENT_URL
         sync: false
         previewValue: https://preview.onrender.com
+      - key: VITE_API_URL
+        value: /api
       - key: RECEIPT_LOGO_PATH
         value: /opt/render/project/src/server/assets/zamor-logo.png.jpeg
 
