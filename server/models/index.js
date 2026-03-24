@@ -2,6 +2,7 @@ const { sequelize } = require("../config/database");
 const User = require("./User");
 const SaleReceipt = require("./SaleReceipt");
 const ReceiptItem = require("./ReceiptItem");
+const ReceiptSequence = require("./ReceiptSequence");
 
 User.hasMany(SaleReceipt, {
   foreignKey: "vendeur_id",
@@ -29,4 +30,5 @@ module.exports = {
   User,
   SaleReceipt,
   ReceiptItem,
+  ReceiptSequence,
 };

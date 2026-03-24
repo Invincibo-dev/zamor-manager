@@ -50,6 +50,12 @@ SaleReceipt.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
+    indexes: [
+      {
+        name: "sale_receipts_date_idx",
+        fields: ["date"],
+      },
+    ],
   }
 );
 

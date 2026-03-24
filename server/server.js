@@ -25,6 +25,10 @@ const allowedOrigins = (process.env.CLIENT_URL || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const databaseSchemaMutationsEnabled =
+  process.env.DB_SYNC_ENABLED !== undefined
+    ? process.env.DB_SYNC_ENABLED === "true"
+    : process.env.NODE_ENV !== "production";
 
 app.set("trust proxy", 1);
 
@@ -140,12 +144,28 @@ const ensureSaleReceiptSessionColumn = async () => {
   }
 };
 
+const ensureSaleReceiptDateIndex = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+  const indexes = await queryInterface.showIndex("sale_receipts");
+  const hasDateIndex = indexes.some((index) => index.name === "sale_receipts_date_idx");
+
+  if (!hasDateIndex) {
+    await queryInterface.addIndex("sale_receipts", ["date"], {
+      name: "sale_receipts_date_idx",
+    });
+  }
+};
+
 const startServer = async () => {
   try {
     await verifyDatabaseConnection();
     await sequelize.authenticate();
-    await sequelize.sync();
-    await ensureSaleReceiptSessionColumn();
+
+    if (databaseSchemaMutationsEnabled) {
+      await sequelize.sync();
+      await ensureSaleReceiptSessionColumn();
+      await ensureSaleReceiptDateIndex();
+    }
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
