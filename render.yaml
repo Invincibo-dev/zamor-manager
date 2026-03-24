@@ -1,7 +1,3 @@
-previews:
-  generation: automatic
-  expireAfterDays: 7
-
 services:
   - type: web
     name: zamor-manager
@@ -16,8 +12,6 @@ services:
     # domains:
     #   - zamor.example.com
     #   - www.zamor.example.com
-    previews:
-      numInstances: 1
     envVars:
       - key: NODE_ENV
         value: production
