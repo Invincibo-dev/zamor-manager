@@ -25,9 +25,9 @@ const sanitizeUser = (user) => ({
   updated_at: user.updated_at,
 });
 
-const register = async (req, res, next) => {
+const createSeller = async (req, res, next) => {
   try {
-    const { name, email, password, role = "vendeur" } = req.body;
+    const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -36,10 +36,10 @@ const register = async (req, res, next) => {
       });
     }
 
-    if (!["admin", "vendeur"].includes(role)) {
+    if (role && role !== "vendeur") {
       return res.status(400).json({
         success: false,
-        message: "role must be admin or vendeur.",
+        message: "Only vendeur accounts can be created from this endpoint.",
       });
     }
 
@@ -57,12 +57,12 @@ const register = async (req, res, next) => {
       name,
       email,
       password: hashedPassword,
-      role,
+      role: "vendeur",
     });
 
     return res.status(201).json({
       success: true,
-      token: generateToken(user),
+      message: "Seller account created successfully.",
       user: sanitizeUser(user),
     });
   } catch (error) {
@@ -117,7 +117,7 @@ const me = async (req, res) => {
 };
 
 module.exports = {
-  register,
+  createSeller,
   login,
   me,
 };

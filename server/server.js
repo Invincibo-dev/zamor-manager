@@ -25,6 +25,10 @@ const allowedOrigins = (process.env.CLIENT_URL || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const databaseSchemaMutationsEnabled =
+  process.env.DB_SYNC_ENABLED !== undefined
+    ? process.env.DB_SYNC_ENABLED === "true"
+    : process.env.NODE_ENV !== "production";
 
 app.set("trust proxy", 1);
 
@@ -144,8 +148,11 @@ const startServer = async () => {
   try {
     await verifyDatabaseConnection();
     await sequelize.authenticate();
-    await sequelize.sync();
-    await ensureSaleReceiptSessionColumn();
+
+    if (databaseSchemaMutationsEnabled) {
+      await sequelize.sync();
+      await ensureSaleReceiptSessionColumn();
+    }
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

@@ -97,9 +97,18 @@ export const createSale = async (payload) => {
 
 export const getSalePdfUrl = (code) => `${API_URL}/sales/pdf/${encodeURIComponent(code)}`;
 
-export const openPdf = (code) => {
-  const token = getStoredToken();
-  window.open(`${getSalePdfUrl(code)}?token=${encodeURIComponent(token || "")}`, "_blank");
+export const openPdf = async (code) => {
+  const response = await fetch(getSalePdfUrl(code), {
+    headers: buildHeaders(false),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to open PDF.");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
 };
 
 export const downloadPdf = async (code) => {
