@@ -5,6 +5,7 @@ import CreateSale from "./pages/CreateSale";
 import Login from "./pages/Login";
 import PrintReceipt from "./pages/PrintReceipt";
 import Reports from "./pages/Reports";
+import SellerSales from "./pages/SellerSales";
 import Users from "./pages/Users";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { getStoredUser } from "./utils/auth";
@@ -41,6 +42,14 @@ function App() {
         element={
           <ProtectedRoute roles={["admin", "vendeur"]}>
             <CreateSale />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales-history"
+        element={
+          <ProtectedRoute roles={["admin", "vendeur"]}>
+            <SellerSales />
           </ProtectedRoute>
         }
       />
