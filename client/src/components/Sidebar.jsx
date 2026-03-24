@@ -1,23 +1,32 @@
 import { NavLink } from "react-router-dom";
 
-import { clearSession } from "../utils/auth";
-
-const menuItems = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Ventes", to: "/dashboard" },
-  { label: "Créer fiche", to: "/create-sale" },
-  { label: "Rapports", to: "/reports" },
-  { label: "Utilisateurs", to: "/users" },
-];
+import { clearSession, getStoredUser } from "../utils/auth";
 
 function Sidebar() {
+  const user = getStoredUser();
+  const isAdmin = user?.role === "admin";
+  const menuItems = isAdmin
+    ? [
+        { label: "Dashboard", to: "/dashboard" },
+        { label: "Ventes", to: "/sales-history" },
+        { label: "Creer fiche", to: "/create-sale" },
+        { label: "Rapports", to: "/reports" },
+        { label: "Utilisateurs", to: "/users" },
+      ]
+    : [
+        { label: "Nouvelle vente", to: "/create-sale" },
+        { label: "Historique", to: "/sales-history" },
+      ];
+
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-slate-200 bg-slate-950 px-5 py-8 text-white lg:flex lg:flex-col lg:justify-between">
       <div>
         <p className="text-xs uppercase tracking-[0.45em] text-orange-300">
           Zamor Manager
         </p>
-        <h1 className="mt-4 text-2xl font-semibold">SaaS Console</h1>
+        <h1 className="mt-4 text-2xl font-semibold">
+          {isAdmin ? "SaaS Console" : "Mode POS"}
+        </h1>
 
         <nav className="mt-10 space-y-2">
           {menuItems.map((item) => (
@@ -46,7 +55,7 @@ function Sidebar() {
         }}
         className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/10"
       >
-        Déconnexion
+        Deconnexion
       </button>
     </aside>
   );

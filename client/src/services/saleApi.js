@@ -1,159 +1,59 @@
-import { API_URL } from "./authApi";
-import { getStoredToken } from "../utils/auth";
+import {
+  buildApiUrl,
+  downloadBlob,
+  openBlobInNewTab,
+  requestBlob,
+  requestJson,
+} from "./http";
 
-const getAuthHeaders = () => {
-  const token = getStoredToken();
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-};
-
-export const createSaleReceiptRequest = async (payload) => {
-  const response = await fetch(`${API_URL}/sales`, {
+export const createSaleReceiptRequest = (payload) =>
+  requestJson("/sales", {
     method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
+    body: payload,
+    errorMessage: "Failed to create sale receipt.",
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to create sale receipt.");
-  }
-
-  return data;
-};
-
 export const getReceiptPdfUrl = (code) => {
-  return `${API_URL}/sales/pdf/${encodeURIComponent(code)}`;
+  return buildApiUrl(`/sales/pdf/${encodeURIComponent(code)}`);
 };
 
 export const downloadReceiptPdf = async (code) => {
-  const response = await fetch(getReceiptPdfUrl(code), {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${getStoredToken()}`,
-    },
+  const blob = await requestBlob(`/sales/pdf/${encodeURIComponent(code)}`, {
+    errorMessage: "Failed to download PDF.",
   });
-
-  if (!response.ok) {
-    let message = "Failed to download PDF.";
-
-    try {
-      const data = await response.json();
-      message = data.message || message;
-    } catch {
-      // Keep default message when response is not JSON.
-    }
-
-    throw new Error(message);
-  }
-
-  const blob = await response.blob();
-  const fileUrl = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = fileUrl;
-  link.download = `${code}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(fileUrl);
+  downloadBlob(blob, `${code}.pdf`);
 };
 
-export const getSaleByCodeRequest = async (code) => {
-  const response = await fetch(`${API_URL}/sales/code/${encodeURIComponent(code)}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${getStoredToken()}`,
-    },
+export const getSaleByCodeRequest = (code) =>
+  requestJson(`/sales/code/${encodeURIComponent(code)}`, {
+    errorMessage: "Failed to load sale receipt.",
   });
-
-  if (!response.ok) {
-    let message = "Failed to load sale receipt.";
-
-    try {
-      const data = await response.json();
-      message = data.message || message;
-    } catch {
-      // Keep default message when response is not JSON.
-    }
-
-    throw new Error(message);
-  }
-
-  const data = await response.json();
-  return data;
-};
 
 export const viewReceiptPdf = async (code) => {
-  const response = await fetch(getReceiptPdfUrl(code), {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${getStoredToken()}`,
-    },
+  const blob = await requestBlob(`/sales/pdf/${encodeURIComponent(code)}`, {
+    errorMessage: "Failed to open PDF.",
   });
-
-  if (!response.ok) {
-    let message = "Failed to open PDF.";
-
-    try {
-      const data = await response.json();
-      message = data.message || message;
-    } catch {
-      // Keep default message when response is not JSON.
-    }
-
-    throw new Error(message);
-  }
-
-  const blob = await response.blob();
-  const fileUrl = window.URL.createObjectURL(blob);
-  window.open(fileUrl, "_blank", "noopener,noreferrer");
+  openBlobInNewTab(blob);
 };
 
-export const getAdminReport = async (period, queryString = "") => {
-  const response = await fetch(`${API_URL}/reports/${period}${queryString}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${getStoredToken()}`,
-    },
+export const getAdminReport = (period, queryString = "") =>
+  requestJson(`/reports/${period}${queryString}`, {
+    errorMessage: "Failed to load admin report.",
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to load admin report.");
-  }
-
-  return data;
-};
 
 export const getSalesByDateRange = async ({ startDate, endDate }) => {
-  const query = new URLSearchParams();
+  const query = {};
 
   if (startDate) {
-    query.set("startDate", startDate);
+    query.startDate = startDate;
   }
 
   if (endDate) {
-    query.set("endDate", endDate);
+    query.endDate = endDate;
   }
 
-  const response = await fetch(`${API_URL}/sales?${query.toString()}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${getStoredToken()}`,
-    },
+  return requestJson("/sales", {
+    query,
+    errorMessage: "Failed to load sales list.",
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to load sales list.");
-  }
-
-  return data;
 };
