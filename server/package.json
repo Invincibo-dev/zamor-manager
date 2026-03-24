@@ -1,0 +1,32 @@
+{
+  "name": "zamor-manager-server",
+  "version": "1.0.0",
+  "description": "Backend Express + Sequelize pour Zamor Manager",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "postinstall": "cd ../client && npm install && npm run build",
+    "start": "node server.js",
+    "check": "node --check server.js && node --check config/database.js && node --check models/index.js && node --check models/User.js && node --check models/SaleReceipt.js && node --check models/ReceiptItem.js && node --check controllers/authController.js && node --check controllers/saleController.js && node --check controllers/reportController.js && node --check controllers/userController.js && node --check routes/authRoutes.js && node --check routes/saleRoutes.js && node --check routes/reportRoutes.js && node --check routes/userRoutes.js && node --check middleware/authMiddleware.js && node --check middleware/roleMiddleware.js && node --check middleware/logger.js && node --check middleware/loginRateLimit.js && node --check utils/generateReceiptCode.js && node --check utils/pdfGenerator.js && node --check utils/receiptLogo.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "mysql2": "^3.20.0",
+    "puppeteer": "^24.39.1",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
