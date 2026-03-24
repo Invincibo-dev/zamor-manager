@@ -19,7 +19,19 @@ const formatDateTime = (value) =>
     minute: "2-digit",
   });
 
-const logoUrl = new URL("/api/assets/receipt-logo", API_URL).toString();
+const getAbsoluteApiUrl = (path) => {
+  if (API_URL.startsWith("http://") || API_URL.startsWith("https://")) {
+    return new URL(path, API_URL).toString();
+  }
+
+  if (typeof window !== "undefined") {
+    return new URL(path, window.location.origin).toString();
+  }
+
+  return path;
+};
+
+const logoUrl = getAbsoluteApiUrl("/api/assets/receipt-logo");
 
 function DashedLine() {
   return <div className="my-1 border-t border-dashed border-black" />;
