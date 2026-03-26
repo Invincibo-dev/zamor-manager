@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 
+import AppShell from "../components/AppShell";
 import SaleTable from "../components/SaleTable";
-import Sidebar from "../components/Sidebar";
 import StatCard from "../components/StatCard";
-import Topbar from "../components/Topbar";
 import {
   getAdminReport,
   getSalesByDateRange,
@@ -88,7 +87,7 @@ function Dashboard() {
     { label: "Ventes aujourd'hui", data: reports.daily },
     { label: "Ventes semaine", data: reports.weekly },
     { label: "Ventes mois", data: reports.monthly },
-    { label: "Ventes année", data: reports.yearly },
+    { label: "Ventes annee", data: reports.yearly },
   ];
 
   const handlePrint = (code) => {
@@ -98,7 +97,7 @@ function Dashboard() {
     );
 
     if (!printWindow) {
-      window.alert("Le navigateur a bloqué la fenêtre d'impression.");
+      window.alert("Le navigateur a bloque la fenetre d'impression.");
     }
   };
 
@@ -111,56 +110,46 @@ function Dashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5f7fb] text-slate-900">
-      <div className="flex min-h-screen">
-        <Sidebar />
+    <AppShell title="Dashboard des ventes" subtitle="Dashboard">
+      <section className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <StatCard
+            key={card.label}
+            label={card.label}
+            value={card.data.nombre_ventes}
+            revenue={formatCurrency(card.data.chiffre_affaires_total)}
+            loading={loadingCards}
+          />
+        ))}
+      </section>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar title="Dashboard des ventes" subtitle="Dashboard" />
-
-          <section className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {cards.map((card) => (
-                <StatCard
-                  key={card.label}
-                  label={card.label}
-                  value={card.data.nombre_ventes}
-                  revenue={formatCurrency(card.data.chiffre_affaires_total)}
-                  loading={loadingCards}
-                />
-              ))}
-            </section>
-
-            <section className="mt-8 rounded-xl bg-white p-6 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)]">
-              <div className="mb-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
-                  Ventes
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-slate-950">
-                  Liste des ventes
-                </h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  Données chargées depuis le backend.
-                </p>
-              </div>
-
-              {error ? (
-                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                  {error}
-                </div>
-              ) : null}
-
-              <SaleTable
-                sales={sales}
-                loading={loadingSales}
-                onViewPdf={handleViewPdf}
-                onPrint={handlePrint}
-              />
-            </section>
-          </section>
+      <section className="mt-5 rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:mt-6 sm:p-5 lg:mt-8 lg:p-6">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+            Ventes
+          </p>
+          <h3 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
+            Liste des ventes
+          </h3>
+          <p className="mt-2 text-sm text-slate-500">
+            Donnees chargees depuis le backend.
+          </p>
         </div>
-      </div>
-    </main>
+
+        {error ? (
+          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        <SaleTable
+          sales={sales}
+          loading={loadingSales}
+          onViewPdf={handleViewPdf}
+          onPrint={handlePrint}
+        />
+      </section>
+    </AppShell>
   );
 }
 
