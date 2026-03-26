@@ -10,15 +10,9 @@ import { getStoredUser } from "../utils/auth";
 
 const createRow = () => ({ product: "", qty: 1, price: 0 });
 const createSaleSessionId = () => crypto.randomUUID();
-const formatCurrency = (value) =>
-  `${Number(value || 0).toLocaleString("fr-FR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} HTG`;
 
-function CreateSale() {
+export default function CreateSale() {
   const user = getStoredUser();
-  const isSeller = user?.role === "vendeur";
   const [rows, setRows] = useState([createRow()]);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [saleSessionId, setSaleSessionId] = useState(createSaleSessionId);
@@ -33,7 +27,6 @@ function CreateSale() {
     if (saved) {
       setSaleSessionId(createSaleSessionId());
     }
-
     setSaved(false);
     setCreatedReceipt(null);
   };
@@ -60,33 +53,26 @@ function CreateSale() {
     });
   };
 
-  const lineItems = useMemo(
-    () =>
-      rows.map((row) => ({
-        ...row,
-        qty: Number(row.qty) || 0,
-        price: Number(row.price) || 0,
-        total: (Number(row.qty) || 0) * (Number(row.price) || 0),
-      })),
-    [rows]
-  );
-
   const validItems = useMemo(
     () =>
-      lineItems
+      rows
         .filter((row) => row.product.trim())
         .map((row) => ({
           nom_produit: row.product.trim(),
-          quantite: row.qty,
-          prix_unitaire: row.price,
+          quantite: Number(row.qty) || 0,
+          prix_unitaire: Number(row.price) || 0,
         }))
         .filter((item) => item.quantite > 0 && item.prix_unitaire >= 0),
-    [lineItems]
+    [rows]
   );
 
   const totalGeneral = useMemo(
-    () => lineItems.reduce((sum, row) => sum + row.total, 0),
-    [lineItems]
+    () =>
+      rows.reduce(
+        (sum, row) => sum + (Number(row.qty) || 0) * (Number(row.price) || 0),
+        0
+      ),
+    [rows]
   );
 
   async function saveSaleIfNotSaved() {
@@ -122,7 +108,7 @@ function CreateSale() {
       const data = await createSaleReceiptRequest(payload);
       setCreatedReceipt(data.receipt);
       setSaved(true);
-      setMessage(`Fiche enregistree : ${data.receipt.code_recu}`);
+      setMessage(`Fiche enregistrée : ${data.receipt.code_recu}`);
       return data.receipt;
     })();
 
@@ -142,7 +128,7 @@ function CreateSale() {
     try {
       await saveSaleIfNotSaved();
     } catch {
-      // The UI already exposes the error state.
+      // Error state is already handled in saveSaleIfNotSaved.
     }
   };
 
@@ -152,13 +138,13 @@ function CreateSale() {
     try {
       const receipt = await saveSaleIfNotSaved();
       await downloadReceiptPdf(receipt.code_recu);
-      setMessage(`PDF telecharge : ${receipt.code_recu}`);
+      setMessage(`PDF téléchargé : ${receipt.code_recu}`);
     } catch (requestError) {
-      setError(requestError.message || "Impossible de telecharger le PDF.");
+      setError(requestError.message || "Impossible de télécharger le PDF.");
     }
   };
 
-  const handlePrintReceipt = async () => {
+  const handlePrintPdf = async () => {
     setError("");
 
     try {
@@ -169,105 +155,88 @@ function CreateSale() {
       );
 
       if (!printWindow) {
-        throw new Error("Le navigateur a bloque la fenetre d'impression.");
+        throw new Error("Le navigateur a bloqué la fenêtre d'impression.");
       }
 
-      setMessage(`Impression du recu ${receipt.code_recu} lancee.`);
+      setMessage(`Impression du reçu ${receipt.code_recu} lancée.`);
     } catch (requestError) {
-      setError(requestError.message || "Impossible d'imprimer le recu.");
+      setError(requestError.message || "Impossible d'imprimer le reçu.");
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-[#f5f7fb] text-slate-900">
       <div className="flex min-h-screen">
         <Sidebar />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="hidden lg:block">
-            <Topbar
-              title={isSeller ? "Caisse vendeur" : "Creer une fiche de vente"}
-              subtitle={isSeller ? "POS" : "Creer fiche"}
-            />
-          </div>
+          <Topbar title="Créer une fiche de vente" subtitle="Créer fiche" />
 
-          <section className="flex-1 px-3 pb-32 pt-3 sm:px-5 sm:pt-5 lg:px-8 lg:pb-8">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.7fr)_380px]">
-              <section className="rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_60px_-34px_rgba(15,23,42,0.34)]">
-                <div className="border-b border-slate-200 px-4 py-4 sm:px-6 lg:px-7">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">
-                        {isSeller ? "Mode caisse" : "Fiche de vente"}
-                      </p>
-                      <h1 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
-                        Enregistrer rapidement une nouvelle vente
-                      </h1>
-                      <p className="mt-2 text-sm text-slate-500">
-                        Interface optimisee pour mobile et utilisation continue en point de vente.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-                          Vendeur
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-slate-950">
-                          {user?.name || "Utilisateur"}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={addRow}
-                        className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                      >
-                        Ajouter ligne
-                      </button>
-                    </div>
+          <section className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-7xl space-y-6">
+              <section className="rounded-xl bg-white p-5 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+                      Fiche de vente
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold text-slate-950">
+                      Tableau des produits
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Remplis les lignes puis enregistre la fiche pour générer le reçu.
+                    </p>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={addRow}
+                    className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  >
+                    Ajouter ligne
+                  </button>
                 </div>
 
-                <div className="px-3 py-3 sm:px-5 lg:px-6 lg:py-5">
-                  <div className="space-y-4 lg:hidden">
-                    {lineItems.map((row, index) => (
-                      <article
-                        key={index}
-                        className="rounded-[26px] border border-slate-200 bg-slate-50 p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-                              Produit {index + 1}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">
-                              {row.product || "Nouvelle ligne"}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeRow(index)}
-                            className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-red-600 shadow-sm"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
+                <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="w-full min-w-[760px] border-collapse">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="p-3 text-left text-sm font-semibold text-slate-600">
+                          Nom produit
+                        </th>
+                        <th className="p-3 text-center text-sm font-semibold text-slate-600">
+                          Quantité
+                        </th>
+                        <th className="p-3 text-center text-sm font-semibold text-slate-600">
+                          Prix unitaire
+                        </th>
+                        <th className="p-3 text-center text-sm font-semibold text-slate-600">
+                          Total
+                        </th>
+                        <th className="p-3" />
+                      </tr>
+                    </thead>
 
-                        <div className="mt-4 space-y-3">
-                          <input
-                            value={row.product}
-                            onChange={(event) =>
-                              handleChange(index, "product", event.target.value)
-                            }
-                            placeholder="Nom produit"
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                          />
+                    <tbody>
+                      {rows.map((row, index) => (
+                        <tr key={index} className="border-t border-gray-200">
+                          <td className="p-2">
+                            <input
+                              className="w-full rounded-lg px-3 py-3 text-sm outline-none transition focus:bg-blue-50 focus:ring-2 focus:ring-blue-200"
+                              value={row.product}
+                              onChange={(event) =>
+                                handleChange(index, "product", event.target.value)
+                              }
+                              placeholder="Nom produit"
+                            />
+                          </td>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <td className="p-2">
                             <input
                               type="number"
-                              min="1"
+                              className="w-full rounded-lg px-3 py-3 text-center text-sm outline-none transition focus:bg-blue-50 focus:ring-2 focus:ring-blue-200"
                               value={row.qty}
+                              min="1"
                               onChange={(event) =>
                                 handleChange(
                                   index,
@@ -275,13 +244,15 @@ function CreateSale() {
                                   Math.max(1, Number(event.target.value) || 1)
                                 )
                               }
-                              placeholder="Quantite"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                             />
+                          </td>
+
+                          <td className="p-2">
                             <input
                               type="number"
-                              min="0"
+                              className="w-full rounded-lg px-3 py-3 text-center text-sm outline-none transition focus:bg-blue-50 focus:ring-2 focus:ring-blue-200"
                               value={row.price}
+                              min="0"
                               onChange={(event) =>
                                 handleChange(
                                   index,
@@ -289,268 +260,115 @@ function CreateSale() {
                                   Math.max(0, Number(event.target.value) || 0)
                                 )
                               }
-                              placeholder="Prix"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                             />
-                          </div>
-                        </div>
+                          </td>
 
-                        <div className="mt-4 rounded-2xl bg-slate-900 px-4 py-3 text-white">
-                          <p className="text-xs uppercase tracking-[0.24em] text-slate-300">
-                            Total ligne
-                          </p>
-                          <p className="mt-1 text-xl font-semibold">
-                            {formatCurrency(row.total)}
-                          </p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                          <td className="p-2 text-center text-sm font-semibold text-slate-900">
+                            {((Number(row.qty) || 0) * (Number(row.price) || 0)).toLocaleString(
+                              "fr-FR"
+                            )}{" "}
+                            HTG
+                          </td>
 
-                  <div className="hidden overflow-x-auto lg:block">
-                    <table className="w-full min-w-[860px] border-collapse">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="rounded-l-2xl p-4 text-left text-sm font-semibold text-slate-600">
-                            Nom produit
-                          </th>
-                          <th className="p-4 text-center text-sm font-semibold text-slate-600">
-                            Quantite
-                          </th>
-                          <th className="p-4 text-center text-sm font-semibold text-slate-600">
-                            Prix unitaire
-                          </th>
-                          <th className="p-4 text-right text-sm font-semibold text-slate-600">
-                            Total
-                          </th>
-                          <th className="rounded-r-2xl p-4" />
+                          <td className="p-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeRow(index)}
+                              className="rounded-lg px-3 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+                            >
+                              Supprimer
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {lineItems.map((row, index) => (
-                          <tr key={index} className="border-t border-slate-200">
-                            <td className="p-3">
-                              <input
-                                value={row.product}
-                                onChange={(event) =>
-                                  handleChange(index, "product", event.target.value)
-                                }
-                                placeholder="Nom produit"
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                min="1"
-                                value={row.qty}
-                                onChange={(event) =>
-                                  handleChange(
-                                    index,
-                                    "qty",
-                                    Math.max(1, Number(event.target.value) || 1)
-                                  )
-                                }
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                min="0"
-                                value={row.price}
-                                onChange={(event) =>
-                                  handleChange(
-                                    index,
-                                    "price",
-                                    Math.max(0, Number(event.target.value) || 0)
-                                  )
-                                }
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                              />
-                            </td>
-                            <td className="p-3 text-right text-sm font-semibold text-slate-950">
-                              {formatCurrency(row.total)}
-                            </td>
-                            <td className="p-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => removeRow(index)}
-                                className="rounded-2xl px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                              >
-                                Supprimer
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-600">
+                      Mode de paiement
+                    </span>
+                    <select
+                      value={paymentMethod}
+                      onChange={(event) => {
+                        markAsDirty();
+                        setPaymentMethod(event.target.value);
+                      }}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="MonCash">MonCash</option>
+                      <option value="Virement">Virement</option>
+                    </select>
+                  </label>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-sm font-medium text-slate-600">Vendeur</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {user?.name || "Utilisateur"}
+                    </p>
                   </div>
                 </div>
+
+                {error ? (
+                  <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                    {error}
+                  </div>
+                ) : null}
+
+                {message ? (
+                  <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                    {message}
+                  </div>
+                ) : null}
               </section>
 
-              <aside className="hidden xl:block">
-                <div className="sticky top-6 space-y-4">
-                  <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.34)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
-                      Resume caisse
-                    </p>
-                    <div className="mt-5 rounded-[26px] bg-slate-950 px-5 py-5 text-white">
-                      <p className="text-xs uppercase tracking-[0.24em] text-slate-300">
-                        Total general
-                      </p>
-                      <p className="mt-2 text-4xl font-semibold">
-                        {formatCurrency(totalGeneral)}
-                      </p>
-                    </div>
-
-                    <label className="mt-5 block">
-                      <span className="mb-2 block text-sm font-medium text-slate-600">
-                        Mode de paiement
-                      </span>
-                      <select
-                        value={paymentMethod}
-                        onChange={(event) => {
-                          markAsDirty();
-                          setPaymentMethod(event.target.value);
-                        }}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                      >
-                        <option value="Cash">Cash</option>
-                        <option value="MonCash">MonCash</option>
-                        <option value="Virement">Virement</option>
-                      </select>
-                    </label>
-
-                    {createdReceipt?.code_recu ? (
-                      <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                        Code recu : {createdReceipt.code_recu}
-                      </div>
-                    ) : null}
-
-                    {message ? (
-                      <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
-                        {message}
-                      </div>
-                    ) : null}
-
-                    {error ? (
-                      <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                        {error}
-                      </div>
-                    ) : null}
-                  </section>
-
-                  <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.34)]">
-                    <div className="grid gap-3">
-                      <button
-                        type="button"
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="rounded-2xl bg-emerald-500 px-5 py-4 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isSaving ? "Enregistrement..." : "Enregistrer fiche"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDownloadPdf}
-                        className="rounded-2xl bg-blue-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-blue-700"
-                      >
-                        Telecharger PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handlePrintReceipt}
-                        className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        Imprimer ticket
-                      </button>
-                    </div>
-                  </section>
+              <section className="rounded-xl bg-white p-6 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+                  Total général
+                </p>
+                <div className="mt-4 text-3xl font-bold text-slate-950 sm:text-4xl">
+                  TOTAL GENERAL : {totalGeneral.toLocaleString("fr-FR")} HTG
                 </div>
-              </aside>
+                {createdReceipt?.code_recu ? (
+                  <p className="mt-3 text-sm font-medium text-slate-500">
+                    Code reçu : {createdReceipt.code_recu}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="rounded-xl bg-white p-5 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSaving ? "Enregistrement..." : "Enregistrer fiche"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
+                  >
+                    Télécharger PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintPdf}
+                    className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+                  >
+                    Imprimer
+                  </button>
+                </div>
+              </section>
             </div>
           </section>
-
-          <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-3 py-3 backdrop-blur lg:hidden">
-            <div className="mx-auto flex max-w-3xl flex-col gap-3">
-              <div className="flex items-center justify-between rounded-2xl bg-slate-950 px-4 py-3 text-white">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-300">
-                    Total general
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold">
-                    {formatCurrency(totalGeneral)}
-                  </p>
-                </div>
-
-                <div className="w-40">
-                  <label className="text-[11px] uppercase tracking-[0.24em] text-slate-300">
-                    Paiement
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(event) => {
-                      markAsDirty();
-                      setPaymentMethod(event.target.value);
-                    }}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none"
-                  >
-                    <option value="Cash" className="text-slate-900">
-                      Cash
-                    </option>
-                    <option value="MonCash" className="text-slate-900">
-                      MonCash
-                    </option>
-                    <option value="Virement" className="text-slate-900">
-                      Virement
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              {message ? (
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
-                  {message}
-                </div>
-              ) : null}
-
-              {error ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                  {error}
-                </div>
-              ) : null}
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="rounded-2xl bg-emerald-500 px-3 py-4 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSaving ? "..." : "Enregistrer"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadPdf}
-                  className="rounded-2xl bg-blue-600 px-3 py-4 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrintReceipt}
-                  className="rounded-2xl bg-slate-900 px-3 py-4 text-sm font-semibold text-white transition hover:bg-slate-800"
-                >
-                  Imprimer
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </main>
   );
 }
-
-export default CreateSale;

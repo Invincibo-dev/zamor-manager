@@ -144,18 +144,6 @@ const ensureSaleReceiptSessionColumn = async () => {
   }
 };
 
-const ensureSaleReceiptDateIndex = async () => {
-  const queryInterface = sequelize.getQueryInterface();
-  const indexes = await queryInterface.showIndex("sale_receipts");
-  const hasDateIndex = indexes.some((index) => index.name === "sale_receipts_date_idx");
-
-  if (!hasDateIndex) {
-    await queryInterface.addIndex("sale_receipts", ["date"], {
-      name: "sale_receipts_date_idx",
-    });
-  }
-};
-
 const startServer = async () => {
   try {
     await verifyDatabaseConnection();
@@ -164,7 +152,6 @@ const startServer = async () => {
     if (databaseSchemaMutationsEnabled) {
       await sequelize.sync();
       await ensureSaleReceiptSessionColumn();
-      await ensureSaleReceiptDateIndex();
     }
 
     app.listen(PORT, () => {
