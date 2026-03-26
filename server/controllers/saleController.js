@@ -21,12 +21,6 @@ const canAccessReceipt = (user, receipt) => {
   return user.role === "admin" || Number(receipt.vendeur_id) === Number(user.id);
 };
 
-const rollbackIfNeeded = async (transaction) => {
-  if (!transaction.finished) {
-    await transaction.rollback();
-  }
-};
-
 const createSale = async (req, res, next) => {
   const transaction = await sequelize.transaction();
 
@@ -47,7 +41,7 @@ const createSale = async (req, res, next) => {
       !Array.isArray(items) ||
       items.length === 0
     ) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "session_id, date, mode_paiement and items are required.",
@@ -62,7 +56,7 @@ const createSale = async (req, res, next) => {
     );
 
     if (invalidItem) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "Each item must include nom_produit, quantite and prix_unitaire.",
@@ -73,7 +67,7 @@ const createSale = async (req, res, next) => {
       req.user.role === "admin" && vendeur_id ? Number(vendeur_id) : Number(req.user.id);
 
     if (req.user.role === "vendeur" && vendeurId !== Number(req.user.id)) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
       return res.status(403).json({
         success: false,
         message: "The authenticated seller must match the sale receipt seller.",
@@ -148,7 +142,7 @@ const createSale = async (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
 
       try {
         const receipt = await SaleReceipt.findOne({
@@ -167,11 +161,9 @@ const createSale = async (req, res, next) => {
       } catch (lookupError) {
         return next(lookupError);
       }
-
-      return next(error);
     }
 
-    await rollbackIfNeeded(transaction);
+    await transaction.rollback();
     next(error);
   }
 };
