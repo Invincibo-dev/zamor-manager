@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "postinstall": "cd ../client && npm install --include=dev && npm run build",
+    "postinstall": "npm run install:browser && cd ../client && npm install --include=dev && npm run build",
+    "install:browser": "npx puppeteer browsers install chrome",
     "start": "node server.js",
     "check": "node --check server.js && node --check config/database.js && node --check models/index.js && node --check models/User.js && node --check models/SaleReceipt.js && node --check models/ReceiptItem.js && node --check controllers/authController.js && node --check controllers/saleController.js && node --check controllers/reportController.js && node --check controllers/userController.js && node --check routes/authRoutes.js && node --check routes/saleRoutes.js && node --check routes/reportRoutes.js && node --check routes/userRoutes.js && node --check middleware/authMiddleware.js && node --check middleware/roleMiddleware.js && node --check middleware/logger.js && node --check middleware/loginRateLimit.js && node --check utils/generateReceiptCode.js && node --check utils/pdfGenerator.js && node --check utils/receiptLogo.js"
   },
