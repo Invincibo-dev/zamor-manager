@@ -27,8 +27,12 @@ function AppShell({
   }, [posMode]);
 
   return (
-    <main className={`min-h-screen bg-[#f5f7fb] text-slate-900 ${posMode ? "pos-mode" : ""}`}>
-      <div className="flex min-h-screen flex-col lg:flex-row">
+    <main
+      className={`h-screen overflow-hidden bg-[#f5f7fb] text-slate-900 ${
+        posMode ? "pos-mode" : ""
+      }`}
+    >
+      <div className="flex h-full flex-col lg:flex-row">
         <Sidebar
           mobileOpen={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
@@ -45,7 +49,7 @@ function AppShell({
           }`}
         />
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <Topbar
             title={title}
             subtitle={subtitle}
@@ -54,8 +58,8 @@ function AppShell({
           />
 
           <section
-            className={`flex-1 px-3 py-3 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-8 lg:py-6 ${
-              posMode ? "overflow-y-auto pb-28 lg:pb-6" : ""
+            className={`app-shell-content flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-8 lg:py-6 ${
+              posMode ? "pb-28 lg:pb-6" : ""
             } ${contentClassName}`}
           >
             {children}
