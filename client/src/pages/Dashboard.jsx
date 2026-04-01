@@ -65,7 +65,7 @@ function Dashboard() {
           return;
         }
 
-        setError(requestError.message || "Impossible de charger le dashboard.");
+        setError(requestError.message || "Chargement impossible.");
       } finally {
         if (!isMounted) {
           return;
@@ -84,10 +84,10 @@ function Dashboard() {
   }, []);
 
   const cards = [
-    { label: "Ventes aujourd'hui", data: reports.daily },
-    { label: "Ventes semaine", data: reports.weekly },
-    { label: "Ventes mois", data: reports.monthly },
-    { label: "Ventes annee", data: reports.yearly },
+    { label: "Aujourd'hui", data: reports.daily },
+    { label: "Cette semaine", data: reports.weekly },
+    { label: "Ce mois", data: reports.monthly },
+    { label: "Cette annee", data: reports.yearly },
   ];
 
   const handlePrint = (code) => {
@@ -105,12 +105,12 @@ function Dashboard() {
     try {
       await viewReceiptPdf(code);
     } catch (requestError) {
-      window.alert(requestError.message || "Impossible d'ouvrir le PDF.");
+      window.alert(requestError.message || "Ouverture impossible.");
     }
   };
 
   return (
-    <AppShell title="Dashboard des ventes" subtitle="Dashboard">
+    <AppShell title="Vue d'ensemble" subtitle="Dashboard">
       <section className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <StatCard
@@ -126,13 +126,13 @@ function Dashboard() {
       <section className="mt-5 rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:mt-6 sm:p-5 lg:mt-8 lg:p-6">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
-            Ventes
+            Activite
           </p>
           <h3 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-            Liste des ventes
+            Ventes recentes
           </h3>
           <p className="mt-2 text-sm text-slate-500">
-            Donnees chargees depuis le backend.
+            Les dernieres ventes en un coup d'oeil.
           </p>
         </div>
 

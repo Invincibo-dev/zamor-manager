@@ -8,11 +8,11 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const menuItems = isAdmin
     ? [
         { label: "Tableau de bord", to: "/dashboard" },
-        { label: "Creer fiche", to: "/create-sale" },
+        { label: "Nouvelle vente", to: "/create-sale" },
         { label: "Rapports", to: "/reports" },
         { label: "Utilisateurs", to: "/users" },
       ]
-    : [{ label: "Creer fiche", to: "/create-sale" }];
+    : [{ label: "Nouvelle vente", to: "/create-sale" }];
 
   return (
     <aside
@@ -27,7 +27,7 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
               Zamor Manager
             </p>
             <h1 className="mt-3 text-xl font-semibold lg:text-2xl">
-              Console SaaS
+              Espace vente
             </h1>
           </div>
 

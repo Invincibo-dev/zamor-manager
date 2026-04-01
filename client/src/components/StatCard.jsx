@@ -7,7 +7,7 @@ function StatCard({ label, value, revenue, loading }) {
       <p className="mt-4 text-3xl font-semibold text-slate-950 sm:text-4xl">
         {loading ? "..." : value}
       </p>
-      <p className="mt-2 text-sm text-slate-500">Chiffre d'affaires</p>
+      <p className="mt-2 text-sm text-slate-500">Total vendu</p>
       <p className="mt-1 text-base font-semibold text-slate-800 sm:text-lg">
         {loading ? "..." : revenue}
       </p>

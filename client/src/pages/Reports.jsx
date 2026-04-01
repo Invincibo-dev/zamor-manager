@@ -58,7 +58,7 @@ function Reports() {
           return;
         }
 
-        setError(requestError.message || "Impossible de charger les rapports.");
+        setError(requestError.message || "Chargement impossible.");
       } finally {
         if (!isMounted) {
           return;
@@ -82,7 +82,7 @@ function Reports() {
     );
 
     if (!printWindow) {
-      window.alert("Le navigateur a bloque la fenetre d'impression.");
+      window.alert("Le navigateur a bloque l'impression.");
     }
   };
 
@@ -90,7 +90,7 @@ function Reports() {
     try {
       await viewReceiptPdf(code);
     } catch (requestError) {
-      window.alert(requestError.message || "Impossible d'ouvrir le PDF.");
+      window.alert(requestError.message || "Ouverture impossible.");
     }
   };
 
@@ -104,18 +104,18 @@ function Reports() {
   );
 
   return (
-    <AppShell title="Rapports personnalises" subtitle="Rapports">
+    <AppShell title="Rapports" subtitle="Rapports">
       <section className="rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-5 lg:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
-              Rapport personnalise
+              Periode
             </p>
             <h3 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-              Analyse par periode
+              Ventes par date
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Donnees chargees depuis le backend.
+              Choisis une periode pour voir le total.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ function Reports() {
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-3xl bg-slate-50 p-5">
             <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-              Nombre ventes
+              Nombre de ventes
             </p>
             <p className="mt-3 text-3xl font-semibold text-slate-950">
               {loading ? "..." : summary.nombre_ventes}
@@ -169,7 +169,7 @@ function Reports() {
           </div>
           <div className="rounded-3xl bg-slate-50 p-5">
             <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-              Chiffre d'affaires
+              Total vendu
             </p>
             <p className="mt-3 text-3xl font-semibold text-slate-950">
               {loading ? "..." : formattedRevenue} HTG
