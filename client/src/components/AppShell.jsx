@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
+import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
@@ -59,11 +60,13 @@ function AppShell({
 
           <section
             className={`app-shell-content flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-8 lg:py-6 ${
-              posMode ? "pb-28 lg:pb-6" : ""
+              posMode ? "pb-28 lg:pb-6" : "pb-24 lg:pb-6"
             } ${contentClassName}`}
           >
             {children}
           </section>
+
+          {posMode ? null : <BottomNav />}
         </div>
       </div>
     </main>

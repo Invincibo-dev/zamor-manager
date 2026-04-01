@@ -18,10 +18,10 @@ function Topbar({ title, subtitle, onMenuClick, compact = false }) {
           <button
             type="button"
             onClick={onMenuClick}
-            className="mt-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 lg:hidden"
+            className="mt-1 min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 lg:hidden"
             aria-label="Ouvrir le menu"
           >
-            ≡
+            Menu
           </button>
 
           <div className="min-w-0">
@@ -30,7 +30,7 @@ function Topbar({ title, subtitle, onMenuClick, compact = false }) {
             </p>
             <h2
               className={`truncate font-semibold text-slate-950 ${
-                compact ? "text-xl sm:text-2xl" : "text-xl sm:text-2xl lg:text-3xl"
+                compact ? "text-lg sm:text-2xl" : "text-lg sm:text-2xl lg:text-3xl"
               }`}
             >
               {title}
@@ -48,7 +48,7 @@ function Topbar({ title, subtitle, onMenuClick, compact = false }) {
           <div className="rounded-full bg-orange-100 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-700">
             {user?.role}
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm xl:block hidden">
+          <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm xl:block">
             <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
               Date actuelle
             </p>

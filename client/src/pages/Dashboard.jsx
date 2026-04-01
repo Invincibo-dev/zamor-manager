@@ -111,7 +111,20 @@ function Dashboard() {
 
   return (
     <AppShell title="Vue d'ensemble" subtitle="Dashboard">
-      <section className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="rounded-[28px] bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-5 lg:hidden">
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+          Aujourd'hui
+        </p>
+        <p className="mt-3 text-3xl font-semibold text-slate-950">
+          {loadingCards ? "..." : reports.daily.nombre_ventes}
+        </p>
+        <p className="mt-2 text-sm text-slate-500">Total vendu</p>
+        <p className="mt-1 text-lg font-semibold text-slate-900">
+          {loadingCards ? "..." : formatCurrency(reports.daily.chiffre_affaires_total)}
+        </p>
+      </section>
+
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <StatCard
             key={card.label}
@@ -123,7 +136,7 @@ function Dashboard() {
         ))}
       </section>
 
-      <section className="mt-5 rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:mt-6 sm:p-5 lg:mt-8 lg:p-6">
+      <section className="mt-4 rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:mt-6 sm:p-5 lg:mt-8 lg:p-6">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
             Activite
