@@ -131,16 +131,28 @@ export const getAdminReport = async (period, queryString = "") => {
   return data;
 };
 
-export const getSalesByDateRange = async ({ startDate, endDate }) => {
+export const getSalesByDateRange = async ({
+  startDate,
+  endDate,
+  vendeurId,
+  modePaiement,
+  minMontant,
+  maxMontant,
+  search,
+  page,
+  limit,
+} = {}) => {
   const query = new URLSearchParams();
 
-  if (startDate) {
-    query.set("startDate", startDate);
-  }
-
-  if (endDate) {
-    query.set("endDate", endDate);
-  }
+  if (startDate) query.set("startDate", startDate);
+  if (endDate) query.set("endDate", endDate);
+  if (vendeurId) query.set("vendeurId", vendeurId);
+  if (modePaiement) query.set("modePaiement", modePaiement);
+  if (minMontant) query.set("minMontant", minMontant);
+  if (maxMontant) query.set("maxMontant", maxMontant);
+  if (search) query.set("search", search);
+  if (page) query.set("page", page);
+  if (limit) query.set("limit", limit);
 
   const response = await fetch(`${API_URL}/sales?${query.toString()}`, {
     method: "GET",
@@ -153,6 +165,102 @@ export const getSalesByDateRange = async ({ startDate, endDate }) => {
 
   if (!response.ok) {
     throw new Error(data.message || "Failed to load sales list.");
+  }
+
+  return data;
+};
+
+export const downloadCsvExport = async ({ startDate, endDate }) => {
+  const query = new URLSearchParams({ startDate, endDate });
+
+  const response = await fetch(`${API_URL}/reports/export?${query.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getStoredToken()}`,
+    },
+  });
+
+  if (!response.ok) {
+    let message = "Export impossible.";
+
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // keep default
+    }
+
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const fileUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = fileUrl;
+  link.download = `ventes_${startDate}_${endDate}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(fileUrl);
+};
+
+export const getDashboardChartData = async () => {
+  const response = await fetch(`${API_URL}/reports/chart-data`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getStoredToken()}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to load chart data.");
+  }
+
+  return data;
+};
+
+export const getPaymentBreakdown = async ({ startDate, endDate } = {}) => {
+  const query = new URLSearchParams();
+
+  if (startDate) query.set("startDate", startDate);
+  if (endDate) query.set("endDate", endDate);
+
+  const response = await fetch(`${API_URL}/reports/payment-breakdown?${query.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getStoredToken()}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to load payment breakdown.");
+  }
+
+  return data;
+};
+
+export const getTopSellers = async ({ startDate, endDate } = {}) => {
+  const query = new URLSearchParams();
+
+  if (startDate) query.set("startDate", startDate);
+  if (endDate) query.set("endDate", endDate);
+
+  const response = await fetch(`${API_URL}/reports/top-sellers?${query.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getStoredToken()}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to load top sellers.");
   }
 
   return data;

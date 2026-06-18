@@ -1,0 +1,76 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+import BottomNav from "./BottomNav";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
+
+function AppShell({
+  title,
+  subtitle,
+  children,
+  posMode = false,
+  contentClassName = "",
+}) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.classList.toggle("pos-mode", posMode);
+
+    return () => {
+      document.body.classList.remove("pos-mode");
+    };
+  }, [posMode]);
+
+  return (
+    <main
+      className={`h-screen overflow-hidden bg-[#f5f7fb] text-slate-900 ${
+        posMode ? "pos-mode" : ""
+      }`}
+    >
+      <div className="flex h-full flex-col lg:flex-row">
+        <Sidebar
+          mobileOpen={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+        />
+
+        <button
+          type="button"
+          aria-label="Fermer le menu"
+          onClick={() => setMobileMenuOpen(false)}
+          className={`fixed inset-0 z-40 bg-slate-950/50 transition-opacity lg:hidden ${
+            mobileMenuOpen
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0"
+          }`}
+        />
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <Topbar
+            title={title}
+            subtitle={subtitle}
+            compact={posMode}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
+
+          <section
+            className={`app-shell-content flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-8 lg:py-6 ${
+              posMode ? "pb-28 lg:pb-6" : "pb-24 lg:pb-6"
+            } ${contentClassName}`}
+          >
+            {children}
+          </section>
+
+          {posMode ? null : <BottomNav />}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default AppShell;

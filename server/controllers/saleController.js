@@ -1,4 +1,4 @@
-const { UniqueConstraintError } = require("sequelize");
+const { UniqueConstraintError, Op } = require("sequelize");
 
 const { sequelize, SaleReceipt, ReceiptItem, User } = require("../models");
 const generateReceiptCode = require("../utils/generateReceiptCode");
@@ -21,12 +21,6 @@ const canAccessReceipt = (user, receipt) => {
   return user.role === "admin" || Number(receipt.vendeur_id) === Number(user.id);
 };
 
-const rollbackIfNeeded = async (transaction) => {
-  if (!transaction.finished) {
-    await transaction.rollback();
-  }
-};
-
 const createSale = async (req, res, next) => {
   const transaction = await sequelize.transaction();
 
@@ -47,7 +41,7 @@ const createSale = async (req, res, next) => {
       !Array.isArray(items) ||
       items.length === 0
     ) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "session_id, date, mode_paiement and items are required.",
@@ -62,7 +56,7 @@ const createSale = async (req, res, next) => {
     );
 
     if (invalidItem) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "Each item must include nom_produit, quantite and prix_unitaire.",
@@ -73,7 +67,7 @@ const createSale = async (req, res, next) => {
       req.user.role === "admin" && vendeur_id ? Number(vendeur_id) : Number(req.user.id);
 
     if (req.user.role === "vendeur" && vendeurId !== Number(req.user.id)) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
       return res.status(403).json({
         success: false,
         message: "The authenticated seller must match the sale receipt seller.",
@@ -148,7 +142,7 @@ const createSale = async (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
-      await rollbackIfNeeded(transaction);
+      await transaction.rollback();
 
       try {
         const receipt = await SaleReceipt.findOne({
@@ -167,42 +161,77 @@ const createSale = async (req, res, next) => {
       } catch (lookupError) {
         return next(lookupError);
       }
-
-      return next(error);
     }
 
-    await rollbackIfNeeded(transaction);
+    await transaction.rollback();
     next(error);
   }
 };
 
 const getSales = async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    const {
+      startDate,
+      endDate,
+      vendeurId,
+      modePaiement,
+      minMontant,
+      maxMontant,
+      search,
+      page,
+      limit,
+    } = req.query;
+
     const where = {};
 
     if (req.user.role !== "admin") {
       where.vendeur_id = req.user.id;
+    } else if (vendeurId) {
+      where.vendeur_id = Number(vendeurId);
     }
 
     if (startDate && endDate) {
       where.date = {
-        [require("sequelize").Op.between]: [
+        [Op.between]: [
           `${startDate} 00:00:00`,
           `${endDate} 23:59:59`,
         ],
       };
     }
 
-    const sales = await SaleReceipt.findAll({
+    if (modePaiement) {
+      where.mode_paiement = modePaiement;
+    }
+
+    if (minMontant || maxMontant) {
+      where.total_general = {};
+      if (minMontant) where.total_general[Op.gte] = Number(minMontant);
+      if (maxMontant) where.total_general[Op.lte] = Number(maxMontant);
+    }
+
+    if (search) {
+      where.code_recu = { [Op.like]: `%${search}%` };
+    }
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const offset = (pageNum - 1) * pageSize;
+
+    const { count, rows } = await SaleReceipt.findAndCountAll({
       where,
       include: receiptInclude,
       order: [["date", "DESC"], ["id", "DESC"]],
+      limit: pageSize,
+      offset,
+      distinct: true,
     });
 
     return res.status(200).json({
       success: true,
-      sales,
+      sales: rows,
+      total: count,
+      page: pageNum,
+      totalPages: Math.ceil(count / pageSize),
     });
   } catch (error) {
     next(error);
