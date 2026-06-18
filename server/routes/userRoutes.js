@@ -10,10 +10,8 @@ const { adminOnly } = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-router.use(protect, adminOnly);
-
-router.get("/", listUsers);
-router.post("/create-seller", createSeller);
-router.put("/:id/reset-password", resetSellerPassword);
+router.get("/", protect, listUsers);
+router.post("/create-seller", protect, adminOnly, createSeller);
+router.put("/:id/reset-password", protect, adminOnly, resetSellerPassword);
 
 module.exports = router;

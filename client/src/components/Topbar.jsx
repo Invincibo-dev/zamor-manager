@@ -1,4 +1,4 @@
-import { getStoredUser } from "../utils/auth";
+import { clearSession, getStoredUser } from "../utils/auth";
 
 const formatDate = () =>
   new Date().toLocaleDateString("fr-FR", {
@@ -7,6 +7,11 @@ const formatDate = () =>
     month: "long",
     day: "numeric",
   });
+
+const handleLogout = () => {
+  clearSession();
+  window.location.href = "/login";
+};
 
 function Topbar({ title, subtitle, onMenuClick, compact = false }) {
   const user = getStoredUser();
@@ -54,6 +59,13 @@ function Topbar({ title, subtitle, onMenuClick, compact = false }) {
             </p>
             <p className="mt-1 font-semibold text-slate-900">{formatDate()}</p>
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          >
+            Deconnexion
+          </button>
         </div>
       </div>
     </header>
