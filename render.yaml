@@ -1,44 +1,37 @@
 services:
-  - type: web
-    name: zamor-manager
-    runtime: node
-    rootDir: server
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
-    autoDeploy: true
-    # Add your real custom domains before syncing this Blueprint if needed.
-    # domains:
-    #   - zamor.example.com
-    #   - www.zamor.example.com
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        value: 3306
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
-      - key: DB_NAME
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-      - key: JWT_EXPIRES_IN
-        value: 7d
-      - key: CLIENT_URL
-        sync: false
-        previewValue: https://preview.onrender.com
-      - key: VITE_API_URL
-        value: /api
-      - key: RECEIPT_LOGO_PATH
-        value: /opt/render/project/src/server/assets/zamor-logo.png.jpeg
 
-# Render Blueprints currently manage Postgres databases, not MySQL databases.
-# For Zamor Manager, keep MySQL on an external managed provider
-# and fill DB_HOST / DB_USER / DB_PASSWORD / DB_NAME in Render.
+* type: web
+  name: zamor-backend
+  runtime: node
+  rootDir: server
+  plan: free
+  buildCommand: npm install
+  startCommand: npm start
+  healthCheckPath: /health
+  autoDeploy: true
+  envVars:
+
+  * key: NODE_ENV
+    value: production
+  * key: PORT
+    value: 10000
+  * key: DB_HOST
+    sync: false
+  * key: DB_PORT
+    value: 3306
+  * key: DB_USER
+    sync: false
+  * key: DB_PASSWORD
+    sync: false
+  * key: DB_NAME
+    sync: false
+  * key: JWT_SECRET
+    sync: false
+  * key: CLIENT_URL
+    sync: false
+
+* type: static
+  name: zamor-frontend
+  rootDir: client
+  buildCommand: npm install && npm run build
+  publishDir: build
