@@ -1,31 +1,52 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppShell from "../components/AppShell";
+import Pagination from "../components/Pagination";
+import SaleFilters from "../components/SaleFilters";
 import SaleTable from "../components/SaleTable";
 import {
+  downloadCsvExport,
   getAdminReport,
   getSalesByDateRange,
   viewReceiptPdf,
 } from "../services/saleApi";
+import { getUsersRequest } from "../services/userApi";
+import { getStoredUser } from "../utils/auth";
 
 const getTodayDate = () => new Date().toISOString().slice(0, 10);
 
+const defaultFilters = {
+  startDate: "2026-03-01",
+  endDate: getTodayDate(),
+  vendeurId: "",
+  modePaiement: "",
+  minMontant: "",
+  maxMontant: "",
+  search: "",
+};
+
 function Reports() {
-  const [filters, setFilters] = useState({
-    startDate: "2026-03-01",
-    endDate: getTodayDate(),
-  });
-  const [appliedFilters, setAppliedFilters] = useState({
-    startDate: "2026-03-01",
-    endDate: getTodayDate(),
-  });
+  const currentUser = getStoredUser();
+  const isAdmin = currentUser?.role === "admin";
+
+  const [filters, setFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [sales, setSales] = useState([]);
-  const [summary, setSummary] = useState({
-    nombre_ventes: 0,
-    chiffre_affaires_total: 0,
-  });
+  const [summary, setSummary] = useState({ nombre_ventes: 0, chiffre_affaires_total: 0 });
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    getUsersRequest()
+      .then((data) => setUsers(data.users || []))
+      .catch(() => {});
+  }, [isAdmin]);
 
   useEffect(() => {
     let isMounted = true;
@@ -41,29 +62,22 @@ function Reports() {
 
         const [summaryResponse, salesResponse] = await Promise.all([
           getAdminReport("custom", queryString),
-          getSalesByDateRange(appliedFilters),
+          getSalesByDateRange({ ...appliedFilters, page, limit: 20 }),
         ]);
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         setSummary({
           nombre_ventes: summaryResponse.nombre_ventes || 0,
           chiffre_affaires_total: summaryResponse.chiffre_affaires_total || 0,
         });
         setSales(salesResponse.sales || []);
+        setTotalPages(salesResponse.totalPages || 1);
       } catch (requestError) {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setError(requestError.message || "Chargement impossible.");
       } finally {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setLoading(false);
       }
     };
@@ -73,17 +87,21 @@ function Reports() {
     return () => {
       isMounted = false;
     };
-  }, [appliedFilters]);
+  }, [appliedFilters, page]);
+
+  const handleApplyFilters = () => {
+    setPage(1);
+    setAppliedFilters(filters);
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handlePrint = (code) => {
-    const printWindow = window.open(
-      `/receipt/print/${encodeURIComponent(code)}`,
-      "_blank"
-    );
-
-    if (!printWindow) {
-      window.alert("Le navigateur a bloque l'impression.");
-    }
+    const printWindow = window.open(`/receipt/print/${encodeURIComponent(code)}`, "_blank");
+    if (!printWindow) window.alert("Le navigateur a bloque l'impression.");
   };
 
   const handleViewPdf = async (code) => {
@@ -91,6 +109,26 @@ function Reports() {
       await viewReceiptPdf(code);
     } catch (requestError) {
       window.alert(requestError.message || "Ouverture impossible.");
+    }
+  };
+
+  const handleExport = async () => {
+    if (!appliedFilters.startDate || !appliedFilters.endDate) {
+      window.alert("Selectionnez une periode avant d'exporter.");
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      await downloadCsvExport({
+        startDate: appliedFilters.startDate,
+        endDate: appliedFilters.endDate,
+      });
+    } catch (requestError) {
+      window.alert(requestError.message || "Export impossible.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -115,41 +153,30 @@ function Reports() {
               Ventes par date
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Choisis une periode pour voir le total.
+              Filtre, recherche et exporte tes ventes.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  startDate: event.target.value,
-                }))
-              }
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  endDate: event.target.value,
-                }))
-              }
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
+          {isAdmin ? (
             <button
               type="button"
-              onClick={() => setAppliedFilters(filters)}
-              className="w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 lg:w-auto"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 disabled:opacity-60 lg:w-auto"
             >
-              Filtrer
+              {isExporting ? "Export..." : "Exporter CSV"}
             </button>
-          </div>
+          ) : null}
+        </div>
+
+        <div className="mt-4">
+          <SaleFilters
+            filters={filters}
+            onChange={setFilters}
+            onApply={handleApplyFilters}
+            users={isAdmin ? users : null}
+            loading={loading}
+          />
         </div>
 
         {error ? (
@@ -184,6 +211,7 @@ function Reports() {
             onViewPdf={handleViewPdf}
             onPrint={handlePrint}
           />
+          <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
       </section>
     </AppShell>
