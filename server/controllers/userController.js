@@ -11,9 +11,13 @@ const sanitizeUser = (user) => ({
   updated_at: user.updated_at,
 });
 
-const listUsers = async (_req, res, next) => {
+const listUsers = async (req, res, next) => {
   try {
+    // Admins see all users. Vendors only see themselves.
+    const where = req.user.role !== "admin" ? { id: req.user.id } : {};
+
     const users = await User.findAll({
+      where,
       attributes: ["id", "name", "email", "role", "created_at", "updated_at"],
       order: [
         ["created_at", "DESC"],

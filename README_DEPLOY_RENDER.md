@@ -27,6 +27,9 @@ DB_NAME=your-mysql-database
 JWT_SECRET=your-strong-secret
 JWT_EXPIRES_IN=7d
 CLIENT_URL=https://your-frontend-domain.onrender.com
+VITE_API_URL=/api
+PUPPETEER_CACHE_DIR=/opt/render/.cache/puppeteer
+PUPPETEER_EXECUTABLE_PATH=
 NODE_ENV=production
 ```
 
@@ -49,6 +52,11 @@ Render build command:
 ```bash
 npm install
 ```
+
+This project now downloads the Puppeteer browser automatically during `postinstall`.
+That means the same build works on Render even when the PDF route is requested from
+Firefox, Edge, Samsung Internet, or Chrome on the client side. The browser used for
+PDF generation is still a server-side Chromium binary managed by Puppeteer.
 
 ## 5. Start Command
 

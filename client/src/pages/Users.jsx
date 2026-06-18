@@ -61,10 +61,10 @@ function ResetPasswordModal({
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 px-4">
       <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.45)] sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-          Reset password
+          Mot de passe
         </p>
         <h3 className="mt-3 text-xl font-semibold text-slate-950 sm:text-2xl">
-          Reinitialiser le mot de passe
+          Changer le mot de passe
         </h3>
         <p className="mt-2 text-sm text-slate-500">
           Nouveau mot de passe pour <span className="font-semibold">{user.name}</span>.
@@ -79,7 +79,7 @@ function ResetPasswordModal({
             value={newPassword}
             onChange={(event) => onChange(event.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-            placeholder="Entrez le nouveau mot de passe"
+            placeholder="Nouveau mot de passe"
           />
         </div>
 
@@ -97,7 +97,7 @@ function ResetPasswordModal({
             disabled={submitting}
             className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {submitting ? "Mise a jour..." : "Valider"}
+            {submitting ? "Enregistrement..." : "Enregistrer"}
           </button>
         </div>
       </div>
@@ -140,7 +140,7 @@ function Users() {
           return;
         }
 
-        setError(requestError.message || "Impossible de charger les utilisateurs.");
+        setError(requestError.message || "Chargement impossible.");
       } finally {
         if (!isMounted) {
           return;
@@ -182,7 +182,7 @@ function Users() {
     if (!createForm.name || !createForm.email || !createForm.password) {
       setToast({
         type: "error",
-        message: "Nom, email et mot de passe sont obligatoires.",
+        message: "Nom, email et mot de passe obligatoires.",
       });
       return;
     }
@@ -199,12 +199,12 @@ function Users() {
       });
       setToast({
         type: "success",
-        message: `Vendeur cree : ${data.user.email}`,
+        message: `Vendeur ajoute : ${data.user.email}`,
       });
     } catch (requestError) {
       setToast({
         type: "error",
-        message: requestError.message || "Impossible de creer le vendeur.",
+        message: requestError.message || "Creation impossible.",
       });
     } finally {
       setCreatingSeller(false);
@@ -225,7 +225,7 @@ function Users() {
     if (!newPassword) {
       setToast({
         type: "error",
-        message: "Le nouveau mot de passe est obligatoire.",
+        message: "Entre un nouveau mot de passe.",
       });
       return;
     }
@@ -240,13 +240,13 @@ function Users() {
       setNewPassword("");
       setToast({
         type: "success",
-        message: data.message || "Mot de passe reinitialise avec succes.",
+        message: data.message || "Mot de passe change.",
       });
     } catch (requestError) {
       setToast({
         type: "error",
         message:
-          requestError.message || "Impossible de reinitialiser le mot de passe.",
+          requestError.message || "Changement impossible.",
       });
     } finally {
       setResettingPassword(false);
@@ -254,7 +254,7 @@ function Users() {
   };
 
   return (
-    <AppShell title="Utilisateurs" subtitle="Gestion des acces">
+    <AppShell title="Utilisateurs" subtitle="Equipe">
       <Toast toast={toast} onClose={() => setToast(null)} />
       <ResetPasswordModal
         user={resetModalUser}
@@ -272,13 +272,13 @@ function Users() {
         <section className="rounded-[28px] bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-5 lg:p-6">
           <div className="mb-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
-              Creation vendeur
+              Nouveau vendeur
             </p>
             <h3 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-              Ajouter un nouveau vendeur
+              Ajouter un vendeur
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Creation et gestion des comptes vendeur depuis Android ou desktop.
+              Cree un compte vendeur en quelques secondes.
             </p>
           </div>
 
@@ -300,7 +300,7 @@ function Users() {
                   }))
                 }
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                placeholder="Nom du vendeur"
+                placeholder="Nom"
               />
             </div>
 
@@ -336,7 +336,7 @@ function Users() {
                   }))
                 }
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                placeholder="Mot de passe initial"
+                placeholder="Mot de passe"
               />
             </div>
 
@@ -346,7 +346,7 @@ function Users() {
                 disabled={creatingSeller}
                 className="w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {creatingSeller ? "Creation..." : "Creer"}
+                {creatingSeller ? "Creation..." : "Ajouter"}
               </button>
             </div>
           </form>
@@ -356,19 +356,19 @@ function Users() {
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
-                Equipe
+                Comptes
               </p>
               <h3 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-                Liste des utilisateurs
+                Liste des comptes
               </h3>
               <p className="mt-2 text-sm text-slate-500">
-                Gestion vendeur sans casser le flux existant.
+                Gere les vendeurs sans toucher au reste.
               </p>
             </div>
 
             <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
               <span className="font-semibold text-slate-950">{sellers.length}</span>{" "}
-              vendeurs enregistres
+              vendeurs actifs
             </div>
           </div>
 
@@ -381,7 +381,7 @@ function Users() {
           <div className="space-y-4 lg:hidden">
             {loading ? (
               <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                Chargement des utilisateurs...
+                Chargement...
               </div>
             ) : users.length === 0 ? (
               <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
@@ -438,7 +438,7 @@ function Users() {
                       onClick={() => handleOpenResetModal(user)}
                       className="mt-4 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                     >
-                      Reset password
+                      Changer mot de passe
                     </button>
                   ) : null}
                 </article>
@@ -471,7 +471,7 @@ function Users() {
                 {loading ? (
                   <tr className="border-t border-slate-200">
                     <td colSpan="5" className="px-5 py-8 text-center text-sm text-slate-500">
-                      Chargement des utilisateurs...
+                      Chargement...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
@@ -507,7 +507,7 @@ function Users() {
                             onClick={() => handleOpenResetModal(user)}
                             className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                           >
-                            Reset password
+                            Changer mot de passe
                           </button>
                         ) : (
                           <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">

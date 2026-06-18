@@ -70,11 +70,11 @@ function SaleTable({ sales, loading, onViewPdf, onPrint }) {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => onViewPdf(sale.code_recu)}
-                className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
+                className="w-full rounded-2xl bg-orange-500 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-orange-600"
               >
                 Voir PDF
               </button>
@@ -82,7 +82,7 @@ function SaleTable({ sales, loading, onViewPdf, onPrint }) {
                 <button
                   type="button"
                   onClick={() => onPrint(sale.code_recu)}
-                  className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="w-full rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   Imprimer
                 </button>

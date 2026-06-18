@@ -98,7 +98,7 @@ function CreateSale() {
 
     if (validItems.length === 0) {
       const validationMessage =
-        "Ajoute au moins un produit valide avant d'enregistrer la fiche.";
+        "Ajoute au moins un produit avant d'enregistrer.";
       setError(validationMessage);
       setMessage("");
       throw new Error(validationMessage);
@@ -120,7 +120,7 @@ function CreateSale() {
       const data = await createSaleReceiptRequest(payload);
       setCreatedReceipt(data.receipt);
       setSaved(true);
-      setMessage(`Fiche enregistree : ${data.receipt.code_recu}`);
+      setMessage(`Enregistre : ${data.receipt.code_recu}`);
       return data.receipt;
     })();
 
@@ -128,7 +128,7 @@ function CreateSale() {
       return await savePromiseRef.current;
     } catch (requestError) {
       setSaved(false);
-      setError(requestError.message || "Impossible d'enregistrer la fiche.");
+      setError(requestError.message || "Enregistrement impossible.");
       throw requestError;
     } finally {
       savePromiseRef.current = null;
@@ -150,9 +150,9 @@ function CreateSale() {
     try {
       const receipt = await saveSaleIfNotSaved();
       await downloadReceiptPdf(receipt.code_recu);
-      setMessage(`PDF telecharge : ${receipt.code_recu}`);
+      setMessage(`PDF pret : ${receipt.code_recu}`);
     } catch (requestError) {
-      setError(requestError.message || "Impossible de telecharger le PDF.");
+      setError(requestError.message || "Telechargement impossible.");
     }
   };
 
@@ -167,19 +167,19 @@ function CreateSale() {
       );
 
       if (!printWindow) {
-        throw new Error("Le navigateur a bloque la fenetre d'impression.");
+        throw new Error("Le navigateur a bloque l'impression.");
       }
 
-      setMessage(`Impression du recu ${receipt.code_recu} lancee.`);
+      setMessage(`Impression lancee : ${receipt.code_recu}`);
     } catch (requestError) {
-      setError(requestError.message || "Impossible d'imprimer le recu.");
+      setError(requestError.message || "Impression impossible.");
     }
   };
 
   return (
     <AppShell
       title="Mode POS"
-      subtitle="Creer fiche"
+      subtitle="Nouvelle vente"
       posMode
       contentClassName="pb-32 lg:pb-6"
     >
@@ -192,10 +192,10 @@ function CreateSale() {
                   Caisse mobile
                 </p>
                 <h1 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-                  Nouvelle fiche de vente
+                  Nouvelle vente
                 </h1>
                 <p className="mt-2 text-sm text-slate-500">
-                  Interface compacte et tactile pour Android.
+                  Rapide, simple et pensee pour mobile.
                 </p>
               </div>
 
@@ -211,7 +211,7 @@ function CreateSale() {
                   onClick={addRow}
                   className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
-                  Ajouter ligne
+                  Ajouter produit
                 </button>
               </div>
             </div>
@@ -230,7 +230,7 @@ function CreateSale() {
                         Produit {index + 1}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {row.product || "Nouvelle ligne"}
+                        {row.product || "Nouveau produit"}
                       </p>
                     </div>
                     <button
@@ -381,7 +381,7 @@ function CreateSale() {
                             onClick={() => removeRow(index)}
                             className="rounded-2xl px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                           >
-                            Supprimer
+                            Retirer
                           </button>
                         </td>
                       </tr>
@@ -413,7 +413,7 @@ function CreateSale() {
               </p>
               <div className="mt-5 rounded-[24px] bg-slate-950 px-5 py-5 text-white">
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-300">
-                  Total general
+                  Total
                 </p>
                 <p className="mt-2 text-4xl font-semibold">
                   {formatCurrency(totalGeneral)}
@@ -422,7 +422,7 @@ function CreateSale() {
 
               <label className="mt-5 block">
                 <span className="mb-2 block text-sm font-medium text-slate-600">
-                  Mode de paiement
+                  Paiement
                 </span>
                 <select
                   value={paymentMethod}
@@ -440,7 +440,7 @@ function CreateSale() {
 
               {createdReceipt?.code_recu ? (
                 <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                  Code recu : {createdReceipt.code_recu}
+                  Recu : {createdReceipt.code_recu}
                 </div>
               ) : null}
 
@@ -465,14 +465,14 @@ function CreateSale() {
                   disabled={isSaving}
                   className="rounded-2xl bg-emerald-500 px-5 py-4 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? "Enregistrement..." : "Enregistrer fiche"}
+                  {isSaving ? "Enregistrement..." : "Enregistrer"}
                 </button>
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
                   className="rounded-2xl bg-blue-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
-                  Telecharger PDF
+                  Telecharger
                 </button>
                 <button
                   type="button"
@@ -493,7 +493,7 @@ function CreateSale() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-300">
-                  Total general
+                  Total
                 </p>
                 <p className="mt-1 text-2xl font-semibold">
                   {formatCurrency(totalGeneral)}

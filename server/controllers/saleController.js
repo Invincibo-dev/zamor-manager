@@ -1,4 +1,4 @@
-const { UniqueConstraintError } = require("sequelize");
+const { UniqueConstraintError, Op } = require("sequelize");
 
 const { sequelize, SaleReceipt, ReceiptItem, User } = require("../models");
 const generateReceiptCode = require("../utils/generateReceiptCode");
@@ -170,31 +170,68 @@ const createSale = async (req, res, next) => {
 
 const getSales = async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    const {
+      startDate,
+      endDate,
+      vendeurId,
+      modePaiement,
+      minMontant,
+      maxMontant,
+      search,
+      page,
+      limit,
+    } = req.query;
+
     const where = {};
 
     if (req.user.role !== "admin") {
       where.vendeur_id = req.user.id;
+    } else if (vendeurId) {
+      where.vendeur_id = Number(vendeurId);
     }
 
     if (startDate && endDate) {
       where.date = {
-        [require("sequelize").Op.between]: [
+        [Op.between]: [
           `${startDate} 00:00:00`,
           `${endDate} 23:59:59`,
         ],
       };
     }
 
-    const sales = await SaleReceipt.findAll({
+    if (modePaiement) {
+      where.mode_paiement = modePaiement;
+    }
+
+    if (minMontant || maxMontant) {
+      where.total_general = {};
+      if (minMontant) where.total_general[Op.gte] = Number(minMontant);
+      if (maxMontant) where.total_general[Op.lte] = Number(maxMontant);
+    }
+
+    if (search) {
+      where.code_recu = { [Op.like]: `%${search}%` };
+    }
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const offset = (pageNum - 1) * pageSize;
+
+    const { count, rows } = await SaleReceipt.findAndCountAll({
       where,
       include: receiptInclude,
       order: [["date", "DESC"], ["id", "DESC"]],
+      limit: pageSize,
+      offset,
+      distinct: true,
     });
 
     return res.status(200).json({
       success: true,
-      sales,
+      sales: rows,
+      total: count,
+      page: pageNum,
+      totalPages: Math.ceil(count / pageSize),
     });
   } catch (error) {
     next(error);
