@@ -1,13 +1,16 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import Dashboard from "./pages/Dashboard";
-import CreateSale from "./pages/CreateSale";
-import Login from "./pages/Login";
-import PrintReceipt from "./pages/PrintReceipt";
-import Reports from "./pages/Reports";
-import Users from "./pages/Users";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { getStoredUser } from "./utils/auth";
+
+// Chargement différé — chaque page est un chunk séparé chargé à la demande
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CreateSale = lazy(() => import("./pages/CreateSale"));
+const Login = lazy(() => import("./pages/Login"));
+const PrintReceipt = lazy(() => import("./pages/PrintReceipt"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Users = lazy(() => import("./pages/Users"));
 
 function HomeRedirect() {
   const user = getStoredUser();
@@ -25,6 +28,8 @@ function HomeRedirect() {
 
 function App() {
   return (
+    // Fallback minimal pendant le chargement d'un chunk de page
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-50"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" /></div>}>
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<Login />} />
@@ -70,6 +75,7 @@ function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }
 

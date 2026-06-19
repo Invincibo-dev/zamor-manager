@@ -29,5 +29,17 @@ export default defineConfig({
   build: {
     outDir: "../server/build",
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core — chargé en premier, mis en cache longtemps
+          vendor: ['react', 'react-dom'],
+          // Router — séparé pour permettre le tree-shaking
+          router: ['react-router-dom'],
+          // Recharts est lourd (~400 kB) — chunk séparé chargé seulement sur les pages charts
+          charts: ['recharts'],
+        },
+      },
+    },
   },
 })
