@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.onrender.zamor_finance.twa",
+    "sha256_cert_fingerprints": ["23:48:80:67:86:17:DD:E4:38:89:2D:5B:B0:84:D8:F5:E9:CC:9C:AB:AF:FF:1A:5C:55:F4:7B:20:E2:B8:55:3A"]
+  }
+}]
