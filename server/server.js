@@ -93,7 +93,8 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/users", userRoutes);
 
 if (fs.existsSync(buildPath)) {
-  app.use(express.static(buildPath));
+  // dotfiles: 'allow' est nécessaire pour servir /.well-known/assetlinks.json (TWA Android)
+  app.use(express.static(buildPath, { dotfiles: "allow" }));
 
   app.get(/^\/(?!api).*/, (_req, res) => {
     res.sendFile(path.resolve(buildPath, "index.html"));
