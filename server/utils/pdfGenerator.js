@@ -1,5 +1,6 @@
 const chromium = require("@sparticuz/chromium");
 const puppeteer = require("puppeteer-core");
+const { existsSync } = require("fs");
 
 const { getLogoDataUri } = require("./receiptLogo");
 
@@ -25,7 +26,6 @@ const formatDate = (value) =>
   });
 
 const buildReceiptHtml = (receipt, company = {}) => {
-  // Logo : priorité au logo uploadé dans CompanySettings, fallback sur le fichier local
   const logoDataUri = company.logo_data || getLogoDataUri();
   const companyName = company.name || "Zamor Multi Services Acces";
   const companyAddress = company.address || "Sèka la source, kole ak antèn Digicel lan";
@@ -137,26 +137,51 @@ const buildReceiptHtml = (receipt, company = {}) => {
   `;
 };
 
-const generateReceiptPdf = async (receipt, company = {}) => {
-  // Disable SwiftShader/WebGL extraction — not needed for PDF, reduces disk usage
+// ─── Memory diagnostic helper ─────────────────────────────────────────────────
+
+const logMem = (label) => {
+  const m = process.memoryUsage();
+  const mb = (b) => Math.round(b / 1024 / 1024);
+  console.log(
+    `[PDF] ${label} — RSS: ${mb(m.rss)} MB | heap: ${mb(m.heapUsed)}/${mb(m.heapTotal)} MB`
+  );
+};
+
+// ─── Queue mutex ──────────────────────────────────────────────────────────────
+// Guarantees at most one Chromium process runs at a time on the 512 MB instance.
+// Each call chains onto the previous job; errors in one job don't block the next.
+
+let _pdfQueue = Promise.resolve();
+
+// ─── Core PDF generation (runs serially via queue) ───────────────────────────
+
+const _runPdf = async (receipt, company) => {
+  // Disable SwiftShader/WebGL — not needed for PDF, skips swiftshader.tar.br extraction
   chromium.setGraphicsMode = false;
 
-  // Production (Render/serverless) : @sparticuz/chromium fournit le binaire.
-  // Dev local : définir PUPPETEER_EXECUTABLE_PATH dans .env
-  //   Windows : C:\Program Files\Google\Chrome\Application\chrome.exe
+  // Production: @sparticuz/chromium extracts its bundled binary to /tmp/chromium
+  // Local dev: set PUPPETEER_EXECUTABLE_PATH in .env to your Chrome path
   const executablePath =
     process.env.PUPPETEER_EXECUTABLE_PATH ||
     (await chromium.executablePath());
 
-  // Temporary diagnostic log — remove once PDF generation is confirmed working
+  // Temporary diagnostic logs — remove once PDF generation is confirmed working on Render
   console.log("[PDF] executablePath:", executablePath);
-  console.log("[PDF] binary exists:", require("fs").existsSync(executablePath));
+  console.log("[PDF] binary exists:", existsSync(executablePath));
 
+  logMem("before launch");
+
+  // chromium.args@133 already includes:
+  //   --disable-dev-shm-usage, --single-process, --no-zygote,
+  //   --no-sandbox, --disable-setuid-sandbox, --disable-webgl (setGraphicsMode=false)
+  // We add --disable-gpu explicitly (not in chromium.args for this version).
   const browser = await puppeteer.launch({
-    args: chromium.args,
+    args: [...chromium.args, "--disable-gpu"],
     executablePath,
     headless: "shell",
   });
+
+  logMem("after launch");
 
   try {
     const page = await browser.newPage();
@@ -178,7 +203,17 @@ const generateReceiptPdf = async (receipt, company = {}) => {
     });
   } finally {
     await browser.close();
+    logMem("after close");
   }
+};
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+const generateReceiptPdf = (receipt, company = {}) => {
+  const queued = _pdfQueue.then(() => _runPdf(receipt, company));
+  // Absorb errors so the queue tail stays resolved and the next caller can run
+  _pdfQueue = queued.catch(() => {});
+  return queued;
 };
 
 module.exports = {
