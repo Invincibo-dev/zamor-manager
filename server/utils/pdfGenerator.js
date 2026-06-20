@@ -23,8 +23,13 @@ const formatDate = (value) =>
     day: "2-digit",
   });
 
-const buildReceiptHtml = (receipt) => {
-  const logoDataUri = getLogoDataUri();
+const buildReceiptHtml = (receipt, company = {}) => {
+  // Logo : priorité au logo uploadé dans CompanySettings, fallback sur le fichier local
+  const logoDataUri = company.logo_data || getLogoDataUri();
+  const companyName = company.name || "Zamor Multi Services Acces";
+  const companyAddress = company.address || "Sèka la source, kole ak antèn Digicel lan";
+  const companyPhone = company.phone || "+1 (267) 254-4284 / +509 3217-2809";
+
   const rows = receipt.items
     .map(
       (item) => `
@@ -100,12 +105,12 @@ const buildReceiptHtml = (receipt) => {
         <div class="line">---------------------------------</div>
         ${
           logoDataUri
-            ? `<div class="logo-wrap"><img class="logo" src="${logoDataUri}" alt="Zamor logo" /></div>`
+            ? `<div class="logo-wrap"><img class="logo" src="${logoDataUri}" alt="${escapeHtml(companyName)}" /></div>`
             : ""
         }
-        <div class="center"><strong>Zamor Multi Services Acces</strong></div>
-        <div>Adresse : Sèka la source, kole ak antèn Digicel lan</div>
-        <div>Téléphone : +1 (267) 254-4284 / +509 3217-2809</div>
+        <div class="center"><strong>${escapeHtml(companyName)}</strong></div>
+        ${companyAddress ? `<div>Adresse : ${escapeHtml(companyAddress)}</div>` : ""}
+        ${companyPhone ? `<div>Téléphone : ${escapeHtml(companyPhone)}</div>` : ""}
         <div class="line">---------------------------------</div>
         <div>Code reçu : ${escapeHtml(receipt.code_recu)}</div>
         <div>Date : ${formatDate(receipt.date)}</div>
@@ -131,7 +136,7 @@ const buildReceiptHtml = (receipt) => {
   `;
 };
 
-const generateReceiptPdf = async (receipt) => {
+const generateReceiptPdf = async (receipt, company = {}) => {
   const launchOptions = {
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -145,7 +150,7 @@ const generateReceiptPdf = async (receipt) => {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(buildReceiptHtml(receipt), {
+    await page.setContent(buildReceiptHtml(receipt, company), {
       waitUntil: "load",
       timeout: 0,
     });

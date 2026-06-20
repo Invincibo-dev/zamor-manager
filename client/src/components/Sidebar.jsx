@@ -1,16 +1,20 @@
 import { NavLink } from "react-router-dom";
 
+import { useCompany } from "../context/CompanyContext";
 import { clearSession, getStoredUser } from "../utils/auth";
 
 function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const user = getStoredUser();
   const isAdmin = user?.role === "admin";
+  const { settings, loading: companyLoading } = useCompany();
+
   const menuItems = isAdmin
     ? [
         { label: "Tableau de bord", to: "/dashboard" },
         { label: "Nouvelle vente", to: "/create-sale" },
         { label: "Rapports", to: "/reports" },
         { label: "Utilisateurs", to: "/users" },
+        { label: "Paramètres", to: "/settings/company" },
       ]
     : [{ label: "Nouvelle vente", to: "/create-sale" }];
 
@@ -22,13 +26,34 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
     >
       <div>
         <div className="flex items-center justify-between lg:block">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.42em] text-orange-300">
-              Zamor Manager
-            </p>
-            <h1 className="mt-3 text-xl font-semibold lg:text-2xl">
-              Espace vente
-            </h1>
+          <div className="flex items-center gap-3">
+            {/* Logo entreprise ou initiale */}
+            {companyLoading ? (
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-white/10" />
+            ) : settings?.logo_data ? (
+              <img
+                src={settings.logo_data}
+                alt="Logo"
+                className="h-9 w-9 rounded-xl object-contain bg-white/10 p-0.5"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500 text-sm font-bold text-white">
+                {(settings?.name ?? "Z")[0].toUpperCase()}
+              </div>
+            )}
+
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.42em] text-orange-300">
+                {companyLoading ? (
+                  <span className="inline-block h-2.5 w-24 animate-pulse rounded bg-white/20" />
+                ) : (
+                  settings?.name ?? "Zamor Manager"
+                )}
+              </p>
+              <h1 className="mt-0.5 text-base font-semibold lg:text-lg">
+                Espace vente
+              </h1>
+            </div>
           </div>
 
           <button

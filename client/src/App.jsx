@@ -11,6 +11,7 @@ const Login = lazy(() => import("./pages/Login"));
 const PrintReceipt = lazy(() => import("./pages/PrintReceipt"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Users = lazy(() => import("./pages/Users"));
+const CompanySettingsPage = lazy(() => import("./pages/CompanySettings"));
 
 function HomeRedirect() {
   const user = getStoredUser();
@@ -70,6 +71,14 @@ function App() {
         element={
           <ProtectedRoute roles={["admin", "vendeur"]}>
             <PrintReceipt />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/company"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <CompanySettingsPage />
           </ProtectedRoute>
         }
       />

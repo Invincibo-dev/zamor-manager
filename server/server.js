@@ -15,6 +15,7 @@ const authRoutes = require("./routes/authRoutes");
 const saleRoutes = require("./routes/saleRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const userRoutes = require("./routes/userRoutes");
+const companySettingsRoutes = require("./routes/companySettingsRoutes");
 const { logger } = require("./middleware/logger");
 const { getReceiptLogoMimeType, getReceiptLogoPath } = require("./utils/receiptLogo");
 
@@ -91,6 +92,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/sales", saleRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/company-settings", companySettingsRoutes);
 
 if (fs.existsSync(buildPath)) {
   // dotfiles: 'allow' est nécessaire pour servir /.well-known/assetlinks.json (TWA Android)
@@ -121,6 +123,28 @@ app.use((error, _req, res, _next) => {
   });
 });
 
+const ensureCompanySettingsTable = async () => {
+  const { mysqlPool } = require("./config/database");
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS company_settings (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      name VARCHAR(200) NOT NULL DEFAULT 'Zamor Multi Services Acces',
+      logo_data MEDIUMTEXT,
+      address VARCHAR(500) DEFAULT NULL,
+      phone VARCHAR(100) DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+  await mysqlPool.query(`
+    INSERT IGNORE INTO company_settings (id, name, address, phone) VALUES
+    (1, 'Zamor Multi Services Acces',
+        'Sèka la source, kole ak antèn Digicel lan',
+        '+1 (267) 254-4284 / +509 3217-2809')
+  `);
+};
+
 const ensureSaleReceiptSessionColumn = async () => {
   const queryInterface = sequelize.getQueryInterface();
   const saleReceiptsTable = await queryInterface.describeTable("sale_receipts");
@@ -149,6 +173,9 @@ const startServer = async () => {
   try {
     await verifyDatabaseConnection();
     await sequelize.authenticate();
+
+    // Toujours exécuté (CREATE TABLE IF NOT EXISTS = idempotent et sans danger)
+    await ensureCompanySettingsTable();
 
     if (databaseSchemaMutationsEnabled) {
       await sequelize.sync();

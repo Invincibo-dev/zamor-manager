@@ -1,6 +1,6 @@
 const { UniqueConstraintError, Op } = require("sequelize");
 
-const { sequelize, SaleReceipt, ReceiptItem, User } = require("../models");
+const { sequelize, SaleReceipt, ReceiptItem, User, CompanySettings } = require("../models");
 const generateReceiptCode = require("../utils/generateReceiptCode");
 const { generateReceiptPdf } = require("../utils/pdfGenerator");
 
@@ -315,7 +315,12 @@ const getSalePdf = async (req, res, next) => {
       });
     }
 
-    const pdfBuffer = await generateReceiptPdf(receipt);
+    const [company] = await CompanySettings.findOrCreate({
+      where: { id: 1 },
+      defaults: { name: "Zamor Multi Services Acces" },
+    });
+
+    const pdfBuffer = await generateReceiptPdf(receipt, company);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
