@@ -1,4 +1,5 @@
-const puppeteer = require("puppeteer");
+const chromium = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
 const { getLogoDataUri } = require("./receiptLogo");
 
@@ -137,16 +138,18 @@ const buildReceiptHtml = (receipt, company = {}) => {
 };
 
 const generateReceiptPdf = async (receipt, company = {}) => {
-  const launchOptions = {
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  };
+  // Production (Render/serverless) : @sparticuz/chromium fournit le binaire.
+  // Dev local : définir PUPPETEER_EXECUTABLE_PATH dans .env
+  //   Windows : C:\Program Files\Google\Chrome\Application\chrome.exe
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    (await chromium.executablePath());
 
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-
-  const browser = await puppeteer.launch(launchOptions);
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath,
+    headless: chromium.headless,
+  });
 
   try {
     const page = await browser.newPage();

@@ -38,8 +38,6 @@ services:
         value: /api
       - key: RECEIPT_LOGO_PATH
         value: /opt/render/project/src/server/assets/zamor-logo.png.jpeg
-      - key: PUPPETEER_CACHE_DIR
-        value: /opt/render/.cache/puppeteer
 
 # Render Blueprints currently manage Postgres databases, not MySQL databases.
 # For Zamor Manager, keep MySQL on an external managed provider
