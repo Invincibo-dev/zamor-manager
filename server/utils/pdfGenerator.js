@@ -138,6 +138,9 @@ const buildReceiptHtml = (receipt, company = {}) => {
 };
 
 const generateReceiptPdf = async (receipt, company = {}) => {
+  // Disable SwiftShader/WebGL extraction — not needed for PDF, reduces disk usage
+  chromium.setGraphicsMode = false;
+
   // Production (Render/serverless) : @sparticuz/chromium fournit le binaire.
   // Dev local : définir PUPPETEER_EXECUTABLE_PATH dans .env
   //   Windows : C:\Program Files\Google\Chrome\Application\chrome.exe
@@ -145,10 +148,14 @@ const generateReceiptPdf = async (receipt, company = {}) => {
     process.env.PUPPETEER_EXECUTABLE_PATH ||
     (await chromium.executablePath());
 
+  // Temporary diagnostic log — remove once PDF generation is confirmed working
+  console.log("[PDF] executablePath:", executablePath);
+  console.log("[PDF] binary exists:", require("fs").existsSync(executablePath));
+
   const browser = await puppeteer.launch({
     args: chromium.args,
     executablePath,
-    headless: chromium.headless,
+    headless: "shell",
   });
 
   try {
