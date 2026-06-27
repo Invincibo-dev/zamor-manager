@@ -1,5 +1,6 @@
 const { DataTypes, Model } = require("sequelize");
 const { sequelize } = require("../config/database");
+const { logAudit } = require("../utils/auditLogger");
 
 class Recharge extends Model {}
 
@@ -21,5 +22,18 @@ Recharge.init(
     updatedAt: false,
   }
 );
+
+Recharge.addHook("afterCreate", async (instance, options) => {
+  const ctx = options.auditCtx || {};
+  await logAudit({
+    tableName: "recharges",
+    recordId: instance.id,
+    action: "create",
+    changedBy: ctx.userId ?? instance.processed_by,
+    oldValues: null,
+    newValues: instance.toJSON(),
+    ip: ctx.ip ?? null,
+  });
+});
 
 module.exports = Recharge;

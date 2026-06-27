@@ -35,7 +35,9 @@ const backupRoutes = require("./routes/backupRoutes");
 const pushRoutes = require("./routes/pushRoutes");
 const natcashRoutes = require("./routes/natcashRoutes");
 const rechargeRoutes = require("./routes/rechargeRoutes");
-const { scheduleBackup } = require("./utils/scheduler");
+const auditLogRoutes = require("./routes/auditLogRoutes");
+const rateLimit = require("express-rate-limit");
+const { scheduleBackup, scheduleLoginHistoryPurge } = require("./utils/scheduler");
 const { warmBrowser } = require("./utils/pdfGenerator");
 const { logger } = require("./middleware/logger");
 const appLogger = require("./utils/logger");
@@ -72,7 +74,19 @@ app.use(
 );
 app.use(
   helmet({
-    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "https://o*.ingest.sentry.io"],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "same-origin" },
   })
 );
 app.use(compression());
@@ -114,6 +128,41 @@ app.get("/api/assets/receipt-logo", (_req, res) => {
   return fs.createReadStream(logoPath).pipe(res);
 });
 
+// B1 : Rate limiting global + routes lourdes
+const _globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Trop de requêtes. Réessayez dans 15 minutes." },
+});
+const _dashboardLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Trop de requêtes dashboard. Réessayez dans une minute." },
+});
+const _reportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Trop de requêtes rapport. Réessayez dans une minute." },
+});
+const _backupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Trop de téléchargements backup. Réessayez dans 15 minutes." },
+});
+
+app.use("/api", _globalLimiter);
+app.use("/api/dashboard", _dashboardLimiter);
+app.use("/api/reports", _reportLimiter);
+app.use("/api/backup", _backupLimiter);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/sales", saleRoutes);
 app.use("/api/reports", reportRoutes);
@@ -131,6 +180,7 @@ app.use("/api/backup", backupRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/natcash", natcashRoutes);
 app.use("/api/recharges", rechargeRoutes);
+app.use("/api/audit-log", auditLogRoutes);
 
 if (fs.existsSync(buildPath)) {
   // dotfiles: 'allow' est nécessaire pour servir /.well-known/assetlinks.json (TWA Android)
@@ -261,6 +311,41 @@ const ensureLoginAttemptsTable = async () => {
       count   INT UNSIGNED NOT NULL DEFAULT 1,
       reset_at DATETIME    NOT NULL,
       PRIMARY KEY (ip)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+};
+
+// A3 : Compteur de tentatives de connexion par email (brute-force ciblé sur un compte)
+const ensureLoginAttemptsEmailTable = async () => {
+  const { mysqlPool } = require("./config/database");
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS login_attempts_email (
+      email    VARCHAR(200) NOT NULL,
+      count    INT UNSIGNED NOT NULL DEFAULT 1,
+      reset_at DATETIME     NOT NULL,
+      PRIMARY KEY (email)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+};
+
+// C1 : Journal d'audit financier — immuable, lecture seule via l'API
+const ensureAuditLogTable = async () => {
+  const { mysqlPool } = require("./config/database");
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id         INT AUTO_INCREMENT PRIMARY KEY,
+      table_name VARCHAR(50)                        NOT NULL,
+      record_id  INT                                NOT NULL,
+      action     ENUM('create','update','delete')   NOT NULL,
+      changed_by INT                                DEFAULT NULL,
+      old_values JSON                               DEFAULT NULL,
+      new_values JSON                               DEFAULT NULL,
+      ip_address VARCHAR(45)                        DEFAULT NULL,
+      created_at TIMESTAMP                          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_al_table   (table_name),
+      INDEX idx_al_action  (action),
+      INDEX idx_al_user    (changed_by),
+      INDEX idx_al_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 };
@@ -571,6 +656,8 @@ const startServer = async () => {
 
     // Toujours exécuté (idempotent et sans danger en production)
     await ensureLoginAttemptsTable();
+    await ensureLoginAttemptsEmailTable();
+    await ensureAuditLogTable();
     await ensureCompanySettingsTable();
     await ensurePhonesTable();
     await ensureRepairsTable();
@@ -600,6 +687,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       appLogger.info(`Server running on http://localhost:${PORT}`);
       scheduleBackup();
+      scheduleLoginHistoryPurge();
       warmBrowser(); // pré-chauffe Chromium pour éviter le cold-start PDF
     });
   } catch (error) {

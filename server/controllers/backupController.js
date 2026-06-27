@@ -32,8 +32,7 @@ const downloadBackup = async (req, res, next) => {
   try {
     res.write(
       `-- Zamor Manager Backup\n` +
-      `-- Generated: ${new Date().toISOString()}\n` +
-      `-- Server: ${process.env.DB_HOST || "localhost"} / ${process.env.DB_NAME || "zamor_manager"}\n\n` +
+      `-- Generated: ${new Date().toISOString()}\n\n` +
       `SET NAMES utf8mb4;\n` +
       `SET FOREIGN_KEY_CHECKS = 0;\n\n`
     );
@@ -71,12 +70,11 @@ const downloadBackup = async (req, res, next) => {
           .join(", ");
 
         const values = rows
-          .map(
-            (row) =>
-              `(${Object.values(row)
-                .map(sqlVal)
-                .join(", ")})`
-          )
+          .map((row) => {
+            // Colonne password : remplacée par '[REDACTED]' pour protéger les hachages bcrypt
+            const safe = TABLE_NAME === "users" ? { ...row, password: "[REDACTED]" } : row;
+            return `(${Object.values(safe).map(sqlVal).join(", ")})`;
+          })
           .join(",\n");
 
         res.write(`INSERT INTO \`${TABLE_NAME}\` (${cols}) VALUES\n${values};\n\n`);

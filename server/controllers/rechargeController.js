@@ -49,7 +49,7 @@ const createRecharge = async (req, res, next) => {
       amount,
       receipt_code,
       processed_by: req.user.id,
-    });
+    }, { auditCtx: { userId: req.user.id, ip: req.ip } });
 
     return res.status(201).json({
       success: true,

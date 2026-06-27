@@ -54,7 +54,7 @@ const createSeller = async (req, res, next) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const user = await User.create({
       name,
       email,
@@ -99,7 +99,7 @@ const resetSellerPassword = async (req, res, next) => {
       });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword, 12);
     await user.save();
 
     return res.status(200).json({

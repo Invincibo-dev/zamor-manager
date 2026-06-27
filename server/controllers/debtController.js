@@ -152,7 +152,7 @@ const addPayment = async (req, res, next) => {
 
     await debt.update(
       { montant_paye: new_montant_paye, statut: new_statut },
-      { transaction: t }
+      { transaction: t, auditCtx: { userId: req.user.id, ip: req.ip } }
     );
 
     await t.commit();
@@ -193,7 +193,7 @@ const updateDebt = async (req, res, next) => {
       updates.statut = req.body.statut;
     }
 
-    await debt.update(updates);
+    await debt.update(updates, { auditCtx: { userId: req.user.id, ip: req.ip } });
     res.json({ success: true, debt });
   } catch (err) {
     next(err);
@@ -215,7 +215,7 @@ const deleteDebt = async (req, res, next) => {
       });
     }
 
-    await debt.destroy();
+    await debt.destroy({ auditCtx: { userId: req.user.id, ip: req.ip } });
     res.json({ success: true, message: "Dette supprimée." });
   } catch (err) {
     next(err);

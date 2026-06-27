@@ -1,4 +1,5 @@
 const { sequelize } = require("../config/database");
+const AuditLog = require("./AuditLog");
 const User = require("./User");
 const SaleReceipt = require("./SaleReceipt");
 const ReceiptItem = require("./ReceiptItem");
@@ -108,8 +109,11 @@ User.hasMany(NatcashTransaction, { foreignKey: "processed_by", as: "natcashTrans
 Recharge.belongsTo(User, { foreignKey: "processed_by", as: "agent" });
 User.hasMany(Recharge, { foreignKey: "processed_by", as: "recharges" });
 
+AuditLog.belongsTo(User, { foreignKey: "changed_by", as: "modifier" });
+
 module.exports = {
   sequelize,
+  AuditLog,
   User,
   SaleReceipt,
   ReceiptItem,

@@ -76,7 +76,11 @@ const runBackup = async () => {
 
         const cols = Object.keys(rows[0]).map((c) => `\`${c}\``).join(", ");
         const values = rows
-          .map((row) => `(${Object.values(row).map(sqlVal).join(", ")})`)
+          .map((row) => {
+            // Colonne password redactée pour protéger les hachages bcrypt dans le fichier backup
+            const safe = TABLE_NAME === "users" ? { ...row, password: "[REDACTED]" } : row;
+            return `(${Object.values(safe).map(sqlVal).join(", ")})`;
+          })
           .join(",\n");
 
         await write(`INSERT INTO \`${TABLE_NAME}\` (${cols}) VALUES\n${values};\n\n`);
@@ -98,7 +102,6 @@ const runBackup = async () => {
       `Backup auto OK → ${filename} (${sizeKb} KB, ${totalRows} lignes, ${elapsed}s)`
     );
 
-    // Suppression des fichiers plus vieux que KEEP_DAYS jours
     pruneOldBackups();
   } catch (err) {
     appLogger.error(`Backup auto ERREUR: ${err.message}`);
@@ -131,10 +134,32 @@ const scheduleBackup = () => {
 
   setTimeout(async () => {
     await runBackup();
-    scheduleBackup(); // replanifie pour J+1
+    scheduleBackup();
   }, delayMs);
 
   appLogger.info(`Backup auto planifié pour ${next.toISOString()}`);
+};
+
+// D2 : Purge hebdomadaire — supprime les entrées login_history > 6 mois
+const purgeLoginHistory = async () => {
+  try {
+    const [result] = await mysqlPool.query(
+      "DELETE FROM login_history WHERE created_at < DATE_SUB(NOW(), INTERVAL 6 MONTH)"
+    );
+    if (result.affectedRows > 0) {
+      appLogger.info(`Purge login_history : ${result.affectedRows} entrée(s) supprimée(s).`);
+    }
+  } catch (err) {
+    appLogger.error(`Purge login_history ERREUR: ${err.message}`);
+  }
+};
+
+const scheduleLoginHistoryPurge = () => {
+  // Exécution immédiate, puis toutes les 7 jours
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  purgeLoginHistory();
+  setInterval(purgeLoginHistory, WEEK_MS);
+  appLogger.info("Purge login_history planifiée (hebdomadaire).");
 };
 
 const listBackups = () => {
@@ -149,4 +174,4 @@ const listBackups = () => {
     .sort((a, b) => b.date.localeCompare(a.date));
 };
 
-module.exports = { scheduleBackup, runBackup, listBackups, BACKUPS_DIR };
+module.exports = { scheduleBackup, scheduleLoginHistoryPurge, runBackup, listBackups, BACKUPS_DIR };

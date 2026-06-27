@@ -1,6 +1,10 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+// Pré-calculé au démarrage pour la protection timing side-channel (A4)
+// bcrypt.hashSync bloque ~400ms une seule fois — acceptable avant la 1re connexion
+const _TIMING_HASH = bcrypt.hashSync("ZAMOR_TIMING_DUMMY_2026", 12);
+
 const { User } = require("../models");
 
 const parseExpiresMs = (str = "7d") => {
@@ -64,7 +68,7 @@ const createSeller = async (req, res, next) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const user = await User.create({ name, email, password: hashedPassword, role });
 
     return res.status(201).json({
@@ -103,18 +107,13 @@ const login = async (req, res, next) => {
 
     const user = await User.findOne({ where: { email } });
 
-    if (!user) {
-      recordLoginHistory(req, null, email, false);
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials.",
-      });
-    }
+    // Toujours exécuter bcrypt même si l'email n'existe pas :
+    // uniformise le temps de réponse → empêche l'énumération d'emails par timing
+    const candidateHash = user ? user.password : _TIMING_HASH;
+    const isValidPassword = await bcrypt.compare(password, candidateHash);
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
-
-    if (!isValidPassword) {
-      recordLoginHistory(req, user.id, email, false);
+    if (!user || !isValidPassword) {
+      recordLoginHistory(req, user?.id || null, email, false);
       return res.status(401).json({
         success: false,
         message: "Invalid credentials.",

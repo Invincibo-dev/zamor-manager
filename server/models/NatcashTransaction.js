@@ -1,5 +1,6 @@
 const { DataTypes, Model } = require("sequelize");
 const { sequelize } = require("../config/database");
+const { logAudit } = require("../utils/auditLogger");
 
 class NatcashTransaction extends Model {}
 
@@ -22,5 +23,18 @@ NatcashTransaction.init(
     updatedAt: false,
   }
 );
+
+NatcashTransaction.addHook("afterCreate", async (instance, options) => {
+  const ctx = options.auditCtx || {};
+  await logAudit({
+    tableName: "natcash_transactions",
+    recordId: instance.id,
+    action: "create",
+    changedBy: ctx.userId ?? instance.processed_by,
+    oldValues: null,
+    newValues: instance.toJSON(),
+    ip: ctx.ip ?? null,
+  });
+});
 
 module.exports = NatcashTransaction;

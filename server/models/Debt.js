@@ -1,6 +1,7 @@
 const { DataTypes, Model } = require("sequelize");
 
 const { sequelize } = require("../config/database");
+const { logAudit } = require("../utils/auditLogger");
 
 class Debt extends Model {}
 
@@ -51,5 +52,36 @@ Debt.init(
     updatedAt: "updated_at",
   }
 );
+
+// Capture les valeurs avant modification pour les enregistrer dans le journal d'audit
+Debt.addHook("beforeUpdate", (instance, options) => {
+  options._prevData = instance.previous();
+});
+
+Debt.addHook("afterUpdate", async (instance, options) => {
+  const ctx = options.auditCtx || {};
+  await logAudit({
+    tableName: "debts",
+    recordId: instance.id,
+    action: "update",
+    changedBy: ctx.userId ?? null,
+    oldValues: options._prevData ?? {},
+    newValues: instance.toJSON(),
+    ip: ctx.ip ?? null,
+  });
+});
+
+Debt.addHook("afterDestroy", async (instance, options) => {
+  const ctx = options.auditCtx || {};
+  await logAudit({
+    tableName: "debts",
+    recordId: instance.id,
+    action: "delete",
+    changedBy: ctx.userId ?? null,
+    oldValues: instance.toJSON(),
+    newValues: null,
+    ip: ctx.ip ?? null,
+  });
+});
 
 module.exports = Debt;

@@ -58,6 +58,7 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
         ...managerItems,
         { label: "Utilisateurs", to: "/users" },
         { label: "Historique accès", to: "/login-history" },
+        { label: "Journal d'audit", to: "/audit-log" },
         { label: "Paramètres", to: "/settings/company" },
       ]
     : isGestionnaire
