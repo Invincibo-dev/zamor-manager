@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 import { useCompany } from "../context/CompanyContext";
@@ -9,6 +10,30 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const isAdmin = user?.role === "admin";
   const isGestionnaire = user?.role === "gestionnaire";
   const { settings, loading: companyLoading } = useCompany();
+
+  const navRef = useRef(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = () => {
+    const el = navRef.current;
+    if (!el) return;
+    setCanScrollUp(el.scrollTop > 4);
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = navRef.current;
+    el?.addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el?.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, []);
+
+  const scrollBy = (dir) => navRef.current?.scrollBy({ top: dir * 120, behavior: "smooth" });
 
   const managerItems = [
     { label: "Tableau de bord", to: "/dashboard" },
@@ -78,24 +103,57 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
           </button>
         </div>
 
-        <nav className="mt-8 space-y-2 lg:mt-10">
-          {menuItems.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `block rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-orange-500 text-white"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
-                }`
-              }
+        <div className="relative mt-8 lg:mt-10">
+          {/* Flèche haut */}
+          {canScrollUp && (
+            <button
+              type="button"
+              onClick={() => scrollBy(-1)}
+              className="absolute -top-1 left-1/2 z-10 -translate-x-1/2 rounded-full bg-slate-800 p-1 text-slate-400 shadow hover:text-white"
+              aria-label="Défiler vers le haut"
             >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+
+          <nav
+            ref={navRef}
+            className="max-h-[calc(100vh-260px)] space-y-2 overflow-y-auto scrollbar-none"
+          >
+            {menuItems.map((item) => (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `block rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-orange-500 text-white"
+                      : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* Flèche bas */}
+          {canScrollDown && (
+            <button
+              type="button"
+              onClick={() => scrollBy(1)}
+              className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-full bg-slate-800 p-1 text-slate-400 shadow hover:text-white"
+              aria-label="Défiler vers le bas"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <button
