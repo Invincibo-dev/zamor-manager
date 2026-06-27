@@ -1,0 +1,23 @@
+const express = require("express");
+
+const {
+  createSale,
+  getSaleByCode,
+  getSalePdf,
+  getSales,
+  getSalesBySeller,
+} = require("../controllers/saleController");
+const { protect } = require("../middleware/authMiddleware");
+const { validate } = require("../middleware/validate");
+const { createSaleSchema } = require("../validators/saleSchema");
+
+const router = express.Router();
+
+router.use(protect);
+
+router.route("/").post(validate(createSaleSchema), createSale).get(getSales);
+router.get("/code/:code", getSaleByCode);
+router.get("/seller/:sellerId", getSalesBySeller);
+router.get("/pdf/:code", getSalePdf);
+
+module.exports = router;

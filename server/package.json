@@ -1,0 +1,44 @@
+{
+  "name": "zamor-manager-server",
+  "version": "1.0.0",
+  "description": "Backend Express + Sequelize pour Zamor Manager",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "postinstall": "cd ../client && npm install --include=dev && npm run build",
+    "start": "node server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "schema:generate": "node scripts/generate-schema.js > database/schema.sql",
+    "check": "node --check server.js && node --check config/database.js && node --check models/index.js && node --check models/User.js && node --check models/SaleReceipt.js && node --check models/ReceiptItem.js && node --check controllers/authController.js && node --check controllers/saleController.js && node --check controllers/reportController.js && node --check controllers/userController.js && node --check routes/authRoutes.js && node --check routes/saleRoutes.js && node --check routes/reportRoutes.js && node --check routes/userRoutes.js && node --check middleware/authMiddleware.js && node --check middleware/roleMiddleware.js && node --check middleware/logger.js && node --check middleware/loginRateLimit.js && node --check utils/generateReceiptCode.js && node --check utils/pdfGenerator.js && node --check utils/receiptLogo.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@sentry/node": "^10.62.0",
+    "@sparticuz/chromium": "^133.0.0",
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "multer": "^2.2.0",
+    "mysql2": "^3.20.0",
+    "puppeteer-core": "^25.1.0",
+    "sequelize": "^6.37.7",
+    "web-push": "^3.6.7",
+    "winston": "^3.19.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  }
+}

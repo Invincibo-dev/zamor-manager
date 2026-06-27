@@ -1,0 +1,28 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+
+dist/
+build/
+client/dist/
+server/build/
+
+.env
+server/.env
+client/.env
+
+# Sauvegardes auto (éphémères, ne pas committer)
+server/backups/
+
+# Logs
+server/logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
