@@ -85,6 +85,7 @@ function Dashboard() {
   const [paymentBreakdown, setPaymentBreakdown] = useState([]);
   const [topSellers, setTopSellers] = useState([]);
   const [recentSales, setRecentSales] = useState([]);
+  const [services, setServices] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pushPermission, setPushPermission] = useState(() =>
@@ -112,6 +113,7 @@ function Dashboard() {
         setPaymentBreakdown(data.payment_breakdown || []);
         setTopSellers(data.top_sellers || []);
         setRecentSales(data.recent_sales || []);
+        setServices(data.services || null);
       } catch (requestError) {
         if (!isMounted) return;
         setError(requestError.message || "Chargement impossible.");
@@ -250,6 +252,28 @@ function Dashboard() {
           }
         />
       </section>
+
+      {/* Section Services — Natcash + Recharges */}
+      {services && (
+        <section className="mt-3 rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-5">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Services</p>
+          <h3 className="mb-4 text-base font-semibold text-slate-950">Natcash &amp; Recharges — aujourd'hui / ce mois</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Natcash aujourd'hui", value: services.natcash?.today_count ?? 0, sub: formatCurrency(services.natcash?.today_amount ?? 0), accent: "text-orange-600" },
+              { label: "Natcash ce mois", value: services.natcash?.month_count ?? 0, sub: formatCurrency(services.natcash?.month_amount ?? 0), accent: "text-orange-600" },
+              { label: "Recharges aujourd'hui", value: services.recharges?.today_count ?? 0, sub: formatCurrency(services.recharges?.today_amount ?? 0), accent: "text-blue-600" },
+              { label: "Recharges ce mois", value: services.recharges?.month_count ?? 0, sub: formatCurrency(services.recharges?.month_amount ?? 0), accent: "text-blue-600" },
+            ].map((c) => (
+              <div key={c.label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{c.label}</p>
+                <p className={`mt-2 text-2xl font-bold ${c.accent}`}>{c.value}</p>
+                <p className="mt-1 text-sm text-slate-500">{c.sub}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Graphiques : 7 jours + répartition paiements */}
       <div className="mt-4 grid gap-4 sm:mt-6 lg:grid-cols-2">

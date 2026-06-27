@@ -12,6 +12,8 @@ const Debt = require("./Debt");
 const DebtPayment = require("./DebtPayment");
 const Expense = require("./Expense");
 const LoginHistory = require("./LoginHistory");
+const NatcashTransaction = require("./NatcashTransaction");
+const Recharge = require("./Recharge");
 
 User.hasMany(SaleReceipt, {
   foreignKey: "vendeur_id",
@@ -100,6 +102,12 @@ DebtPayment.belongsTo(User, { foreignKey: "created_by", as: "creator" });
 LoginHistory.belongsTo(User, { foreignKey: "user_id", as: "user" });
 User.hasMany(LoginHistory, { foreignKey: "user_id", as: "loginHistory" });
 
+NatcashTransaction.belongsTo(User, { foreignKey: "processed_by", as: "agent" });
+User.hasMany(NatcashTransaction, { foreignKey: "processed_by", as: "natcashTransactions" });
+
+Recharge.belongsTo(User, { foreignKey: "processed_by", as: "agent" });
+User.hasMany(Recharge, { foreignKey: "processed_by", as: "recharges" });
+
 module.exports = {
   sequelize,
   User,
@@ -115,4 +123,6 @@ module.exports = {
   DebtPayment,
   Expense,
   LoginHistory,
+  NatcashTransaction,
+  Recharge,
 };

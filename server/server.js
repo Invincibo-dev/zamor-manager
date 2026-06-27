@@ -33,6 +33,8 @@ const expenseRoutes = require("./routes/expenseRoutes");
 const loginHistoryRoutes = require("./routes/loginHistoryRoutes");
 const backupRoutes = require("./routes/backupRoutes");
 const pushRoutes = require("./routes/pushRoutes");
+const natcashRoutes = require("./routes/natcashRoutes");
+const rechargeRoutes = require("./routes/rechargeRoutes");
 const { scheduleBackup } = require("./utils/scheduler");
 const { warmBrowser } = require("./utils/pdfGenerator");
 const { logger } = require("./middleware/logger");
@@ -124,6 +126,8 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/login-history", loginHistoryRoutes);
 app.use("/api/backup", backupRoutes);
 app.use("/api/push", pushRoutes);
+app.use("/api/natcash", natcashRoutes);
+app.use("/api/recharges", rechargeRoutes);
 
 if (fs.existsSync(buildPath)) {
   // dotfiles: 'allow' est nécessaire pour servir /.well-known/assetlinks.json (TWA Android)
@@ -421,6 +425,45 @@ const ensureLoginHistoryTable = async () => {
   `);
 };
 
+const ensureNatcashTable = async () => {
+  const { mysqlPool } = require("./config/database");
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS natcash_transactions (
+      id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      phone_number VARCHAR(20)  NOT NULL,
+      client_name  VARCHAR(200) NOT NULL,
+      amount       DECIMAL(12,2) NOT NULL,
+      service_type ENUM('depot','retrait','transfert') NOT NULL,
+      receipt_code VARCHAR(25)  NOT NULL,
+      processed_by INT UNSIGNED NOT NULL,
+      created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY idx_natcash_code (receipt_code),
+      KEY idx_natcash_processed_by (processed_by),
+      KEY idx_natcash_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+};
+
+const ensureRechargesTable = async () => {
+  const { mysqlPool } = require("./config/database");
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS recharges (
+      id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      company      ENUM('natcom','digicel') NOT NULL,
+      phone_number VARCHAR(20)  NOT NULL,
+      amount       DECIMAL(12,2) NOT NULL,
+      receipt_code VARCHAR(25)  NOT NULL,
+      processed_by INT UNSIGNED NOT NULL,
+      created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY idx_recharge_code (receipt_code),
+      KEY idx_recharge_processed_by (processed_by),
+      KEY idx_recharge_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+};
+
 const ensurePushSubscriptionsTable = async () => {
   const { mysqlPool } = require("./config/database");
   await mysqlPool.query(`
@@ -534,6 +577,8 @@ const startServer = async () => {
     await ensureUsersRoleGestionnaire();
     await ensureLoginHistoryTable();
     await ensurePushSubscriptionsTable();
+    await ensureNatcashTable();
+    await ensureRechargesTable();
     await ensureProductsTable();
     await ensureProductsQuantitySigned();
     await ensureReceiptItemPrixAchat();

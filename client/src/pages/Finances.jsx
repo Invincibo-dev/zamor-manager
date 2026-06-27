@@ -19,6 +19,8 @@ import {
   listExpenses,
   updateExpense,
 } from "../services/expenseApi";
+import { downloadNatcashPdf, listNatcash } from "../services/natcashApi";
+import { downloadRechargePdf, listRecharges } from "../services/rechargeApi";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -303,6 +305,11 @@ function Finances() {
   const [isExporting, setIsExporting] = useState(false);
   const printRef = useRef(null);
 
+  const [natcashData, setNatcashData] = useState(null);
+  const [rechargesData, setRechargesData] = useState(null);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [servicesPdfLoading, setServicesPdfLoading] = useState(null);
+
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
     setError("");
@@ -328,10 +335,30 @@ function Finances() {
     }
   }, [periode]);
 
+  const loadServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const [nat, rch] = await Promise.all([
+        listNatcash({ from: periode.from, to: periode.to, limit: 200 }),
+        listRecharges({ from: periode.from, to: periode.to, limit: 200 }),
+      ]);
+      setNatcashData(nat);
+      setRechargesData(rch);
+    } catch {
+      // non-blocking
+    } finally {
+      setLoadingServices(false);
+    }
+  }, [periode]);
+
   useEffect(() => {
     loadSummary();
     loadExpenses();
   }, [loadSummary, loadExpenses]);
+
+  useEffect(() => {
+    if (tab === "services") loadServices();
+  }, [tab, loadServices]);
 
   const applyPreset = (idx) => {
     const range = PRESETS[idx].range();
@@ -499,6 +526,7 @@ function Finances() {
           {[
             { key: "resume", label: "Résumé" },
             { key: "depenses", label: "Dépenses" },
+            { key: "services", label: "Services" },
           ].map((t) => (
             <button
               key={t.key}
@@ -579,6 +607,110 @@ function Finances() {
                   </button>
                 </div>
               )
+            )}
+          </div>
+        ) : null}
+
+        {/* Services tab */}
+        {tab === "services" ? (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              Les services (Natcash + Recharges) sont des services clients — ils ne sont pas inclus dans le calcul du bénéfice.
+            </div>
+
+            {loadingServices ? (
+              <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-12 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+            ) : (
+              <>
+                {/* Natcash */}
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-800">Natcash</p>
+                    {natcashData && <p className="text-sm text-slate-500">{natcashData.total} transaction(s) · <span className="font-semibold">{fmt(natcashData.total_amount)}</span></p>}
+                  </div>
+                  <div className="overflow-hidden rounded-3xl border border-slate-200">
+                    <table className="w-full border-collapse text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          {["Code", "Type", "Client", "Téléphone", "Montant", "Date", ""].map((h) => (
+                            <th key={h} className="p-3 text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {!natcashData?.transactions?.length ? (
+                          <tr><td colSpan={7} className="p-4 text-center text-slate-400">Aucune transaction Natcash.</td></tr>
+                        ) : natcashData.transactions.map((tx) => (
+                          <tr key={tx.id} className="hover:bg-slate-50/60">
+                            <td className="p-3 font-mono text-xs">{tx.receipt_code}</td>
+                            <td className="p-3">
+                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tx.service_type === "depot" ? "bg-green-100 text-green-700" : tx.service_type === "retrait" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                                {tx.service_type === "depot" ? "Dépôt" : tx.service_type === "retrait" ? "Retrait" : "Transfert"}
+                              </span>
+                            </td>
+                            <td className="p-3">{tx.client_name}</td>
+                            <td className="p-3 font-mono text-xs">{tx.phone_number}</td>
+                            <td className="p-3 font-semibold">{fmt(tx.amount)}</td>
+                            <td className="p-3 text-slate-500">{new Date(tx.created_at).toLocaleDateString("fr-FR")}</td>
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                disabled={servicesPdfLoading === tx.receipt_code}
+                                onClick={async () => { setServicesPdfLoading(tx.receipt_code); try { await downloadNatcashPdf(tx.receipt_code); } finally { setServicesPdfLoading(null); } }}
+                                className="rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                              >{servicesPdfLoading === tx.receipt_code ? "..." : "PDF"}</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Recharges */}
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-800">Recharges</p>
+                    {rechargesData && <p className="text-sm text-slate-500">{rechargesData.total} recharge(s) · <span className="font-semibold">{fmt(rechargesData.total_amount)}</span></p>}
+                  </div>
+                  <div className="overflow-hidden rounded-3xl border border-slate-200">
+                    <table className="w-full border-collapse text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          {["Code", "Compagnie", "Numéro", "Montant", "Date", ""].map((h) => (
+                            <th key={h} className="p-3 text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {!rechargesData?.recharges?.length ? (
+                          <tr><td colSpan={6} className="p-4 text-center text-slate-400">Aucune recharge.</td></tr>
+                        ) : rechargesData.recharges.map((rc) => (
+                          <tr key={rc.id} className="hover:bg-slate-50/60">
+                            <td className="p-3 font-mono text-xs">{rc.receipt_code}</td>
+                            <td className="p-3">
+                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rc.company === "natcom" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+                                {rc.company === "natcom" ? "Natcom" : "Digicel"}
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono text-xs">{rc.phone_number}</td>
+                            <td className="p-3 font-semibold">{fmt(rc.amount)}</td>
+                            <td className="p-3 text-slate-500">{new Date(rc.created_at).toLocaleDateString("fr-FR")}</td>
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                disabled={servicesPdfLoading === rc.receipt_code}
+                                onClick={async () => { setServicesPdfLoading(rc.receipt_code); try { await downloadRechargePdf(rc.receipt_code); } finally { setServicesPdfLoading(null); } }}
+                                className="rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                              >{servicesPdfLoading === rc.receipt_code ? "..." : "PDF"}</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         ) : null}

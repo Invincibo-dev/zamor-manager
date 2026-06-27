@@ -1,5 +1,6 @@
 const { Op, fn, col, literal, QueryTypes } = require("sequelize");
 const { sequelize, SaleReceipt, User, Product } = require("../models");
+const { mysqlPool } = require("../config/database");
 
 const buildRange = (start, end) => ({
   [Op.between]: [`${start} 00:00:00`, `${end} 23:59:59`],
@@ -198,6 +199,50 @@ const getDashboard = async (_req, res, next) => {
       }),
     ]);
 
+    // ─── Stats services (Natcash + Recharges) ────────────────────────────────
+    const serviceStats = await (async () => {
+      try {
+        const [[natDay]] = await mysqlPool.query(
+          `SELECT COUNT(*) AS count, COALESCE(SUM(amount),0) AS total FROM natcash_transactions WHERE DATE(created_at)=?`,
+          [todayStr]
+        );
+        const [[natMonth]] = await mysqlPool.query(
+          `SELECT COUNT(*) AS count, COALESCE(SUM(amount),0) AS total FROM natcash_transactions WHERE created_at BETWEEN ? AND ?`,
+          [`${monthStartStr} 00:00:00`, `${monthEndStr} 23:59:59`]
+        );
+        const [natByType] = await mysqlPool.query(
+          `SELECT service_type, COUNT(*) AS count, COALESCE(SUM(amount),0) AS total FROM natcash_transactions WHERE created_at BETWEEN ? AND ? GROUP BY service_type`,
+          [`${monthStartStr} 00:00:00`, `${monthEndStr} 23:59:59`]
+        );
+        const [[rchDay]] = await mysqlPool.query(
+          `SELECT COUNT(*) AS count, COALESCE(SUM(amount),0) AS total FROM recharges WHERE DATE(created_at)=?`,
+          [todayStr]
+        );
+        const [[rchMonth]] = await mysqlPool.query(
+          `SELECT COUNT(*) AS count, COALESCE(SUM(amount),0) AS total FROM recharges WHERE created_at BETWEEN ? AND ?`,
+          [`${monthStartStr} 00:00:00`, `${monthEndStr} 23:59:59`]
+        );
+        const [rchByCompany] = await mysqlPool.query(
+          `SELECT company, COUNT(*) AS count, COALESCE(SUM(amount),0) AS total FROM recharges WHERE created_at BETWEEN ? AND ? GROUP BY company`,
+          [`${monthStartStr} 00:00:00`, `${monthEndStr} 23:59:59`]
+        );
+        return {
+          natcash_count_today: Number(natDay.count),
+          natcash_amount_today: Number(natDay.total),
+          natcash_count_month: Number(natMonth.count),
+          natcash_amount_month: Number(natMonth.total),
+          natcash_by_type: natByType,
+          recharge_count_today: Number(rchDay.count),
+          recharge_amount_today: Number(rchDay.total),
+          recharge_count_month: Number(rchMonth.count),
+          recharge_amount_month: Number(rchMonth.total),
+          recharge_by_company: rchByCompany,
+        };
+      } catch {
+        return null;
+      }
+    })();
+
     return res.status(200).json({
       success: true,
       kpi: {
@@ -236,6 +281,7 @@ const getDashboard = async (_req, res, next) => {
       payment_breakdown: paymentBreakdown,
       top_sellers: topSellers,
       recent_sales: recentSales,
+      services: serviceStats,
     });
   } catch (error) {
     next(error);

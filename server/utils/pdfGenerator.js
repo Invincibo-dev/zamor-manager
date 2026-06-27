@@ -210,4 +210,131 @@ const warmBrowser = () => {
   );
 };
 
-module.exports = { generateReceiptPdf, warmBrowser };
+// ─── Natcash PDF ──────────────────────────────────────────────────────────────
+
+const TYPE_LABELS = { depot: "Dépôt", retrait: "Retrait", transfert: "Transfert" };
+
+const buildNatcashHtml = (tx, company = {}) => {
+  const logoDataUri = company.logo_data || getLogoDataUri();
+  const companyName = company.name || "Zamor Multi Services Acces";
+  const companyAddress = company.address || "";
+  const companyPhone = company.phone || "";
+  const typeLabel = TYPE_LABELS[tx.service_type] || tx.service_type;
+  const heure = new Date(tx.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+  return `<!doctype html>
+  <html lang="fr"><head><meta charset="utf-8" /><title>Natcash ${escapeHtml(tx.receipt_code)}</title>
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    body { width: 72mm; margin: 0 auto; color: #000; font-family: "Courier New", monospace; font-size: 11px; line-height: 1.5; }
+    .logo-wrap { text-align: center; margin-bottom: 6px; }
+    .logo { width: 22mm; max-width: 100%; height: auto; object-fit: contain; }
+    .sep { margin: 6px 0; }
+    .center { text-align: center; }
+  </style></head><body>
+  <div class="sep">---------------------------------</div>
+  ${logoDataUri ? `<div class="logo-wrap"><img class="logo" src="${logoDataUri}" alt="" /></div>` : ""}
+  <div class="center"><strong>${escapeHtml(companyName)}</strong></div>
+  ${companyAddress ? `<div>Adresse : ${escapeHtml(companyAddress)}</div>` : ""}
+  ${companyPhone ? `<div>Téléphone : ${escapeHtml(companyPhone)}</div>` : ""}
+  <div class="sep">---------------------------------</div>
+  <div class="center"><strong>SERVICE NATCASH — ${escapeHtml(typeLabel.toUpperCase())}</strong></div>
+  <div class="sep">---------------------------------</div>
+  <div>Code : ${escapeHtml(tx.receipt_code)}</div>
+  <div>Date : ${formatDate(tx.created_at)} ${escapeHtml(heure)}</div>
+  <div class="sep">---------------------------------</div>
+  <div>Client : ${escapeHtml(tx.client_name)}</div>
+  <div>Téléphone : ${escapeHtml(tx.phone_number)}</div>
+  <div class="sep">---------------------------------</div>
+  <div><strong>Montant : ${formatNumber(tx.amount)} HTG</strong></div>
+  <div class="sep">---------------------------------</div>
+  <div>Traité par : ${escapeHtml(tx.processed_by_name || "")}</div>
+  <div class="sep">---------------------------------</div>
+  <div class="center">Mèsi anpil !</div>
+  </body></html>`;
+};
+
+// ─── Recharge PDF ─────────────────────────────────────────────────────────────
+
+const buildRechargeHtml = (rc, company = {}) => {
+  const logoDataUri = company.logo_data || getLogoDataUri();
+  const companyName = company.name || "Zamor Multi Services Acces";
+  const companyAddress = company.address || "";
+  const companyPhone = company.phone || "";
+  const companyLabel = rc.company === "natcom" ? "Natcom" : "Digicel";
+  const heure = new Date(rc.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+  return `<!doctype html>
+  <html lang="fr"><head><meta charset="utf-8" /><title>Recharge ${escapeHtml(rc.receipt_code)}</title>
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    body { width: 72mm; margin: 0 auto; color: #000; font-family: "Courier New", monospace; font-size: 11px; line-height: 1.5; }
+    .logo-wrap { text-align: center; margin-bottom: 6px; }
+    .logo { width: 22mm; max-width: 100%; height: auto; object-fit: contain; }
+    .sep { margin: 6px 0; }
+    .center { text-align: center; }
+  </style></head><body>
+  <div class="sep">---------------------------------</div>
+  ${logoDataUri ? `<div class="logo-wrap"><img class="logo" src="${logoDataUri}" alt="" /></div>` : ""}
+  <div class="center"><strong>${escapeHtml(companyName)}</strong></div>
+  ${companyAddress ? `<div>Adresse : ${escapeHtml(companyAddress)}</div>` : ""}
+  ${companyPhone ? `<div>Téléphone : ${escapeHtml(companyPhone)}</div>` : ""}
+  <div class="sep">---------------------------------</div>
+  <div class="center"><strong>RECHARGE ${escapeHtml(companyLabel.toUpperCase())}</strong></div>
+  <div class="sep">---------------------------------</div>
+  <div>Code : ${escapeHtml(rc.receipt_code)}</div>
+  <div>Date : ${formatDate(rc.created_at)} ${escapeHtml(heure)}</div>
+  <div class="sep">---------------------------------</div>
+  <div>Numéro rechargé : ${escapeHtml(rc.phone_number)}</div>
+  <div class="sep">---------------------------------</div>
+  <div><strong>Montant : ${formatNumber(rc.amount)} HTG</strong></div>
+  <div class="sep">---------------------------------</div>
+  <div>Traité par : ${escapeHtml(rc.processed_by_name || "")}</div>
+  <div class="sep">---------------------------------</div>
+  <div class="center">Mèsi anpil !</div>
+  </body></html>`;
+};
+
+const _runServicePdf = async (html) => {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setContent(html, { waitUntil: "load", timeout: 0 });
+    return await page.pdf({
+      width: "80mm",
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    });
+  } finally {
+    await page.close();
+  }
+};
+
+const generateNatcashPdf = (tx, company = {}) => {
+  const cacheKey = `nat_${tx.id}`;
+  if (tx.id && _pdfCache.has(cacheKey)) return Promise.resolve(_pdfCache.get(cacheKey));
+  const queued = _pdfQueue.then(async () => {
+    if (tx.id && _pdfCache.has(cacheKey)) return _pdfCache.get(cacheKey);
+    const buffer = await _runServicePdf(buildNatcashHtml(tx, company));
+    if (tx.id) _cacheSet(cacheKey, buffer);
+    return buffer;
+  });
+  _pdfQueue = queued.catch(() => {});
+  return queued;
+};
+
+const generateRechargePdf = (rc, company = {}) => {
+  const cacheKey = `rch_${rc.id}`;
+  if (rc.id && _pdfCache.has(cacheKey)) return Promise.resolve(_pdfCache.get(cacheKey));
+  const queued = _pdfQueue.then(async () => {
+    if (rc.id && _pdfCache.has(cacheKey)) return _pdfCache.get(cacheKey);
+    const buffer = await _runServicePdf(buildRechargeHtml(rc, company));
+    if (rc.id) _cacheSet(cacheKey, buffer);
+    return buffer;
+  });
+  _pdfQueue = queued.catch(() => {});
+  return queued;
+};
+
+module.exports = { generateReceiptPdf, generateNatcashPdf, generateRechargePdf, warmBrowser };

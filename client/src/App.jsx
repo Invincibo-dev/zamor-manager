@@ -17,6 +17,8 @@ const Repairs = lazy(() => import("./pages/Repairs"));
 const Clients = lazy(() => import("./pages/Clients"));
 const Finances = lazy(() => import("./pages/Finances"));
 const LoginHistoryPage = lazy(() => import("./pages/LoginHistory"));
+const Natcash = lazy(() => import("./pages/Natcash"));
+const Recharges = lazy(() => import("./pages/Recharges"));
 
 function HomeRedirect() {
   const user = getStoredUser();
@@ -124,6 +126,22 @@ function App() {
         element={
           <ProtectedRoute roles={["admin"]}>
             <LoginHistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/natcash"
+        element={
+          <ProtectedRoute roles={["admin", "gestionnaire", "vendeur"]}>
+            <Natcash />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recharges"
+        element={
+          <ProtectedRoute roles={["admin", "gestionnaire", "vendeur"]}>
+            <Recharges />
           </ProtectedRoute>
         }
       />

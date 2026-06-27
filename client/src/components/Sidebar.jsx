@@ -38,11 +38,19 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const managerItems = [
     { label: "Tableau de bord", to: "/dashboard" },
     { label: "Nouvelle vente", to: "/create-sale" },
+    { label: "Natcash", to: "/natcash" },
+    { label: "Recharges", to: "/recharges" },
     { label: "Rapports", to: "/reports" },
     { label: "Téléphones", to: "/phones" },
     { label: "Réparations", to: "/repairs" },
     { label: "Clients & Dettes", to: "/clients" },
     { label: "Finances", to: "/finances" },
+  ];
+
+  const vendeurItems = [
+    { label: "Nouvelle vente", to: "/create-sale" },
+    { label: "Natcash", to: "/natcash" },
+    { label: "Recharges", to: "/recharges" },
   ];
 
   const menuItems = isAdmin
@@ -54,7 +62,7 @@ function Sidebar({ mobileOpen = false, onClose = () => {} }) {
       ]
     : isGestionnaire
     ? managerItems
-    : [{ label: "Nouvelle vente", to: "/create-sale" }];
+    : vendeurItems;
 
   return (
     <aside
