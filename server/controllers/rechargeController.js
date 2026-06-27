@@ -1,6 +1,30 @@
 const { mysqlPool } = require("../config/database");
 const { Recharge, CompanySettings } = require("../models");
-const { generateRechargePdf } = require("../utils/pdfGenerator");
+const { generateRechargePdf, generateRechargesReportPdf } = require("../utils/pdfGenerator");
+
+const MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+function buildReportDateRange(query) {
+  const { period = "month", date, month, year } = query;
+  const now = new Date();
+  if (period === "day") {
+    const d = date || now.toISOString().slice(0, 10);
+    const dateObj = new Date(d + "T12:00:00");
+    return {
+      from: `${d} 00:00:00`,
+      to: `${d} 23:59:59`,
+      dateLabel: dateObj.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+    };
+  }
+  const m = String(Number(month || (now.getMonth() + 1))).padStart(2, "0");
+  const y = Number(year || now.getFullYear());
+  const lastDay = new Date(y, Number(m), 0).getDate();
+  return {
+    from: `${y}-${m}-01 00:00:00`,
+    to: `${y}-${m}-${String(lastDay).padStart(2, "0")} 23:59:59`,
+    dateLabel: `${MONTHS_FR[Number(m) - 1]} ${y}`,
+  };
+}
 
 const generateCode = async () => {
   const year = new Date().getFullYear();
@@ -115,4 +139,51 @@ const getRechargePdf = async (req, res, next) => {
   }
 };
 
-module.exports = { createRecharge, listRecharges, getRechargePdf };
+const _fetchRechargesReport = async (query) => {
+  const { from, to, dateLabel } = buildReportDateRange(query);
+  const [recharges] = await mysqlPool.query(
+    `SELECT r.*, u.name AS processed_by_name
+     FROM recharges r
+     LEFT JOIN users u ON u.id = r.processed_by
+     WHERE r.created_at >= ? AND r.created_at <= ?
+     ORDER BY r.created_at ASC`,
+    [from, to]
+  );
+  const total = recharges.length;
+  const total_amount = recharges.reduce((sum, rc) => sum + Number(rc.amount), 0);
+  const breakdown = {};
+  for (const rc of recharges) {
+    if (!breakdown[rc.company]) breakdown[rc.company] = { count: 0, amount: 0 };
+    breakdown[rc.company].count++;
+    breakdown[rc.company].amount += Number(rc.amount);
+  }
+  return { dateLabel, period: { from, to }, total, total_amount, breakdown, recharges };
+};
+
+const getRechargesReport = async (req, res, next) => {
+  try {
+    const report = await _fetchRechargesReport(req.query);
+    return res.json({ success: true, ...report });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getRechargesReportPdf = async (req, res, next) => {
+  try {
+    const report = await _fetchRechargesReport(req.query);
+    if (report.total === 0) {
+      return res.status(404).json({ success: false, message: "Aucune recharge pour cette période." });
+    }
+    const [settings] = await CompanySettings.findAll({ limit: 1, raw: true });
+    const buffer = await generateRechargesReportPdf(report, settings || {});
+    const slug = report.dateLabel.replace(/\s+/g, "-").toLowerCase();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="rapport-recharges-${slug}.pdf"`);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { createRecharge, listRecharges, getRechargePdf, getRechargesReport, getRechargesReportPdf };

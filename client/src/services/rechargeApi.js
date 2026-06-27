@@ -31,3 +31,31 @@ export const downloadRechargePdf = async (code) => {
   const url = window.URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener,noreferrer");
 };
+
+const _buildReportQs = ({ period, date, month, year }) => {
+  const q = new URLSearchParams({ period });
+  if (period === "day" && date) q.set("date", date);
+  if (period === "month") { if (month) q.set("month", month); if (year) q.set("year", year); }
+  return q.toString();
+};
+
+export const getRechargesReport = async (params) => {
+  const res = await fetch(`${API_URL}/recharges/report?${_buildReportQs(params)}`, { credentials: "include" });
+  return jsonOrThrow(res, "Impossible de générer le rapport Recharges.");
+};
+
+export const downloadRechargesReportPdf = async (params) => {
+  const res = await fetch(`${API_URL}/recharges/report/pdf?${_buildReportQs(params)}`, { credentials: "include" });
+  if (!res.ok) {
+    redirect401(res.status);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Aucune recharge pour cette période.");
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rapport-recharges.pdf`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};

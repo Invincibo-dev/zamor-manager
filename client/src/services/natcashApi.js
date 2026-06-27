@@ -31,3 +31,31 @@ export const downloadNatcashPdf = async (code) => {
   const url = window.URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener,noreferrer");
 };
+
+const _buildReportQs = ({ period, date, month, year }) => {
+  const q = new URLSearchParams({ period });
+  if (period === "day" && date) q.set("date", date);
+  if (period === "month") { if (month) q.set("month", month); if (year) q.set("year", year); }
+  return q.toString();
+};
+
+export const getNatcashReport = async (params) => {
+  const res = await fetch(`${API_URL}/natcash/report?${_buildReportQs(params)}`, { credentials: "include" });
+  return jsonOrThrow(res, "Impossible de générer le rapport Natcash.");
+};
+
+export const downloadNatcashReportPdf = async (params) => {
+  const res = await fetch(`${API_URL}/natcash/report/pdf?${_buildReportQs(params)}`, { credentials: "include" });
+  if (!res.ok) {
+    redirect401(res.status);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Aucune transaction pour cette période.");
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rapport-natcash.pdf`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};

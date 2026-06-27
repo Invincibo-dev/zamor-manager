@@ -19,8 +19,8 @@ import {
   listExpenses,
   updateExpense,
 } from "../services/expenseApi";
-import { downloadNatcashPdf, listNatcash } from "../services/natcashApi";
-import { downloadRechargePdf, listRecharges } from "../services/rechargeApi";
+import { downloadNatcashReportPdf, getNatcashReport } from "../services/natcashApi";
+import { downloadRechargesReportPdf, getRechargesReport } from "../services/rechargeApi";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -281,6 +281,133 @@ function PrintReport({ summary, expenses, periode, onClose }) {
   );
 }
 
+// ─── Service Report Component ─────────────────────────────────────────────────
+
+const MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+function ServiceReport({ title, accentCls, params, setParams, report, loading, pdfLoading, error, onGenerate, onPdf, breakdownLabels, breakdownColors, transactionKey, transactionCols }) {
+  const inputCls = "rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-3">
+        <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white text-xs font-bold ${accentCls}`}>{title[0]}</div>
+        <p className="text-base font-semibold text-slate-900">Rapport {title}</p>
+      </div>
+
+      {/* Period selector */}
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Période</label>
+          <div className="flex rounded-2xl border border-slate-200 bg-slate-50 p-1 gap-1">
+            {["month", "day"].map((p) => (
+              <button key={p} type="button" onClick={() => setParams((prev) => ({ ...prev, period: p }))}
+                className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${params.period === p ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                {p === "month" ? "Mensuel" : "Journalier"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {params.period === "day" ? (
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Date</label>
+            <input type="date" value={params.date} onChange={(e) => setParams((p) => ({ ...p, date: e.target.value }))} className={inputCls} />
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Mois</label>
+              <select value={params.month} onChange={(e) => setParams((p) => ({ ...p, month: e.target.value }))} className={inputCls}>
+                {MONTHS_FR.map((name, i) => <option key={i + 1} value={String(i + 1)}>{name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Année</label>
+              <select value={params.year} onChange={(e) => setParams((p) => ({ ...p, year: e.target.value }))} className={inputCls}>
+                {Array.from({ length: 4 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => <option key={y}>{y}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+
+        <button type="button" onClick={onGenerate} disabled={loading}
+          className="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60">
+          {loading ? "Génération..." : "Générer le rapport"}
+        </button>
+      </div>
+
+      {error && <p className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
+
+      {report && (
+        <>
+          {/* Summary */}
+          <div className="mb-4 rounded-3xl bg-white p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.15)]">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">Résumé</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-800">{report.dateLabel}</p>
+              </div>
+              <button type="button" onClick={onPdf} disabled={pdfLoading || report.total === 0}
+                className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50">
+                {pdfLoading ? "Génération PDF..." : "Télécharger PDF"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-slate-50 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Total</p>
+                <p className="mt-1 text-xl font-bold text-slate-900">{report.total}</p>
+                <p className="text-[11px] text-slate-500">opération(s)</p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Montant total</p>
+                <p className="mt-1 text-xl font-bold text-slate-900">{fmt(report.total_amount)}</p>
+                <p className="text-[11px] text-slate-500">HTG</p>
+              </div>
+              {Object.entries(report.breakdown || {}).map(([key, stats]) => (
+                <div key={key} className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">{breakdownLabels[key] || key}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">{stats.count}</p>
+                  <p className="text-[11px] text-slate-500">{fmt(stats.amount)} HTG</p>
+                </div>
+              ))}
+            </div>
+
+            {report.total === 0 && (
+              <p className="mt-3 text-center text-sm text-slate-400">Aucune transaction pour cette période.</p>
+            )}
+          </div>
+
+          {/* Transactions table */}
+          {(report[transactionKey] || []).length > 0 && (
+            <div className="overflow-hidden rounded-3xl border border-slate-200">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {transactionCols.map((col) => (
+                      <th key={col.label} className={`p-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400 ${col.right ? "text-right" : "text-left"}`}>{col.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(report[transactionKey] || []).map((item, i) => (
+                    <tr key={item.id || i} className="hover:bg-slate-50/60">
+                      {transactionCols.map((col) => (
+                        <td key={col.label} className={`p-3 ${col.right ? "text-right" : ""}`}>{col.render(item)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const PRESETS = [
@@ -305,10 +432,21 @@ function Finances() {
   const [isExporting, setIsExporting] = useState(false);
   const printRef = useRef(null);
 
-  const [natcashData, setNatcashData] = useState(null);
-  const [rechargesData, setRechargesData] = useState(null);
-  const [loadingServices, setLoadingServices] = useState(false);
-  const [servicesPdfLoading, setServicesPdfLoading] = useState(null);
+  const _thisMonth = String(new Date().getMonth() + 1);
+  const _thisYear = String(new Date().getFullYear());
+  const _today = new Date().toISOString().slice(0, 10);
+
+  const [natParams, setNatParams] = useState({ period: "month", date: _today, month: _thisMonth, year: _thisYear });
+  const [natReport, setNatReport] = useState(null);
+  const [natLoading, setNatLoading] = useState(false);
+  const [natPdfLoading, setNatPdfLoading] = useState(false);
+  const [natError, setNatError] = useState("");
+
+  const [rchParams, setRchParams] = useState({ period: "month", date: _today, month: _thisMonth, year: _thisYear });
+  const [rchReport, setRchReport] = useState(null);
+  const [rchLoading, setRchLoading] = useState(false);
+  const [rchPdfLoading, setRchPdfLoading] = useState(false);
+  const [rchError, setRchError] = useState("");
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
@@ -335,30 +473,10 @@ function Finances() {
     }
   }, [periode]);
 
-  const loadServices = useCallback(async () => {
-    setLoadingServices(true);
-    try {
-      const [nat, rch] = await Promise.all([
-        listNatcash({ from: periode.from, to: periode.to, limit: 200 }),
-        listRecharges({ from: periode.from, to: periode.to, limit: 200 }),
-      ]);
-      setNatcashData(nat);
-      setRechargesData(rch);
-    } catch {
-      // non-blocking
-    } finally {
-      setLoadingServices(false);
-    }
-  }, [periode]);
-
   useEffect(() => {
     loadSummary();
     loadExpenses();
   }, [loadSummary, loadExpenses]);
-
-  useEffect(() => {
-    if (tab === "services") loadServices();
-  }, [tab, loadServices]);
 
   const applyPreset = (idx) => {
     const range = PRESETS[idx].range();
@@ -613,105 +731,81 @@ function Finances() {
 
         {/* Services tab */}
         {tab === "services" ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
               Les services (Natcash + Recharges) sont des services clients — ils ne sont pas inclus dans le calcul du bénéfice.
             </div>
 
-            {loadingServices ? (
-              <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-12 animate-pulse rounded-2xl bg-slate-100" />)}</div>
-            ) : (
-              <>
-                {/* Natcash */}
-                <div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-800">Natcash</p>
-                    {natcashData && <p className="text-sm text-slate-500">{natcashData.total} transaction(s) · <span className="font-semibold">{fmt(natcashData.total_amount)}</span></p>}
-                  </div>
-                  <div className="overflow-hidden rounded-3xl border border-slate-200">
-                    <table className="w-full border-collapse text-sm">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          {["Code", "Type", "Client", "Téléphone", "Montant", "Date", ""].map((h) => (
-                            <th key={h} className="p-3 text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {!natcashData?.transactions?.length ? (
-                          <tr><td colSpan={7} className="p-4 text-center text-slate-400">Aucune transaction Natcash.</td></tr>
-                        ) : natcashData.transactions.map((tx) => (
-                          <tr key={tx.id} className="hover:bg-slate-50/60">
-                            <td className="p-3 font-mono text-xs">{tx.receipt_code}</td>
-                            <td className="p-3">
-                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tx.service_type === "depot" ? "bg-green-100 text-green-700" : tx.service_type === "retrait" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
-                                {tx.service_type === "depot" ? "Dépôt" : tx.service_type === "retrait" ? "Retrait" : "Transfert"}
-                              </span>
-                            </td>
-                            <td className="p-3">{tx.client_name}</td>
-                            <td className="p-3 font-mono text-xs">{tx.phone_number}</td>
-                            <td className="p-3 font-semibold">{fmt(tx.amount)}</td>
-                            <td className="p-3 text-slate-500">{new Date(tx.created_at).toLocaleDateString("fr-FR")}</td>
-                            <td className="p-3">
-                              <button
-                                type="button"
-                                disabled={servicesPdfLoading === tx.receipt_code}
-                                onClick={async () => { setServicesPdfLoading(tx.receipt_code); try { await downloadNatcashPdf(tx.receipt_code); } finally { setServicesPdfLoading(null); } }}
-                                className="rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                              >{servicesPdfLoading === tx.receipt_code ? "..." : "PDF"}</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+            {/* ── Rapport Natcash ── */}
+            <ServiceReport
+              title="Natcash"
+              accentCls="bg-orange-500"
+              params={natParams}
+              setParams={setNatParams}
+              report={natReport}
+              loading={natLoading}
+              pdfLoading={natPdfLoading}
+              error={natError}
+              onGenerate={async () => {
+                setNatLoading(true); setNatError(""); setNatReport(null);
+                try { setNatReport(await getNatcashReport(natParams)); }
+                catch (e) { setNatError(e.message); }
+                finally { setNatLoading(false); }
+              }}
+              onPdf={async () => {
+                setNatPdfLoading(true); setNatError("");
+                try { await downloadNatcashReportPdf(natParams); }
+                catch (e) { setNatError(e.message); }
+                finally { setNatPdfLoading(false); }
+              }}
+              breakdownLabels={{ depot: "Dépôt", retrait: "Retrait", transfert: "Transfert" }}
+              breakdownColors={{ depot: "bg-green-100 text-green-700", retrait: "bg-red-100 text-red-700", transfert: "bg-blue-100 text-blue-700" }}
+              transactionKey="transactions"
+              transactionCols={[
+                { label: "Date / Heure", render: (tx) => new Date(tx.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) },
+                { label: "Client", render: (tx) => tx.client_name },
+                { label: "Téléphone", render: (tx) => <span className="font-mono text-xs">{tx.phone_number}</span> },
+                { label: "Type", render: (tx) => <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${{ depot: "bg-green-100 text-green-700", retrait: "bg-red-100 text-red-700", transfert: "bg-blue-100 text-blue-700" }[tx.service_type]}`}>{{ depot: "Dépôt", retrait: "Retrait", transfert: "Transfert" }[tx.service_type]}</span> },
+                { label: "Montant", render: (tx) => <span className="font-semibold">{fmt(tx.amount)}</span>, right: true },
+                { label: "Employé", render: (tx) => <span className="text-slate-500">{tx.processed_by_name}</span> },
+              ]}
+            />
 
-                {/* Recharges */}
-                <div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-800">Recharges</p>
-                    {rechargesData && <p className="text-sm text-slate-500">{rechargesData.total} recharge(s) · <span className="font-semibold">{fmt(rechargesData.total_amount)}</span></p>}
-                  </div>
-                  <div className="overflow-hidden rounded-3xl border border-slate-200">
-                    <table className="w-full border-collapse text-sm">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          {["Code", "Compagnie", "Numéro", "Montant", "Date", ""].map((h) => (
-                            <th key={h} className="p-3 text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {!rechargesData?.recharges?.length ? (
-                          <tr><td colSpan={6} className="p-4 text-center text-slate-400">Aucune recharge.</td></tr>
-                        ) : rechargesData.recharges.map((rc) => (
-                          <tr key={rc.id} className="hover:bg-slate-50/60">
-                            <td className="p-3 font-mono text-xs">{rc.receipt_code}</td>
-                            <td className="p-3">
-                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rc.company === "natcom" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
-                                {rc.company === "natcom" ? "Natcom" : "Digicel"}
-                              </span>
-                            </td>
-                            <td className="p-3 font-mono text-xs">{rc.phone_number}</td>
-                            <td className="p-3 font-semibold">{fmt(rc.amount)}</td>
-                            <td className="p-3 text-slate-500">{new Date(rc.created_at).toLocaleDateString("fr-FR")}</td>
-                            <td className="p-3">
-                              <button
-                                type="button"
-                                disabled={servicesPdfLoading === rc.receipt_code}
-                                onClick={async () => { setServicesPdfLoading(rc.receipt_code); try { await downloadRechargePdf(rc.receipt_code); } finally { setServicesPdfLoading(null); } }}
-                                className="rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                              >{servicesPdfLoading === rc.receipt_code ? "..." : "PDF"}</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="border-t border-slate-100" />
+
+            {/* ── Rapport Recharges ── */}
+            <ServiceReport
+              title="Recharges"
+              accentCls="bg-blue-600"
+              params={rchParams}
+              setParams={setRchParams}
+              report={rchReport}
+              loading={rchLoading}
+              pdfLoading={rchPdfLoading}
+              error={rchError}
+              onGenerate={async () => {
+                setRchLoading(true); setRchError(""); setRchReport(null);
+                try { setRchReport(await getRechargesReport(rchParams)); }
+                catch (e) { setRchError(e.message); }
+                finally { setRchLoading(false); }
+              }}
+              onPdf={async () => {
+                setRchPdfLoading(true); setRchError("");
+                try { await downloadRechargesReportPdf(rchParams); }
+                catch (e) { setRchError(e.message); }
+                finally { setRchPdfLoading(false); }
+              }}
+              breakdownLabels={{ natcom: "Natcom", digicel: "Digicel" }}
+              breakdownColors={{ natcom: "bg-blue-100 text-blue-700", digicel: "bg-red-100 text-red-700" }}
+              transactionKey="recharges"
+              transactionCols={[
+                { label: "Date / Heure", render: (rc) => new Date(rc.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) },
+                { label: "Compagnie", render: (rc) => <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${{ natcom: "bg-blue-100 text-blue-700", digicel: "bg-red-100 text-red-700" }[rc.company]}`}>{{ natcom: "Natcom", digicel: "Digicel" }[rc.company]}</span> },
+                { label: "Numéro", render: (rc) => <span className="font-mono text-xs">{rc.phone_number}</span> },
+                { label: "Montant", render: (rc) => <span className="font-semibold">{fmt(rc.amount)}</span>, right: true },
+                { label: "Employé", render: (rc) => <span className="text-slate-500">{rc.processed_by_name}</span> },
+              ]}
+            />
           </div>
         ) : null}
 

@@ -1,6 +1,30 @@
 const { mysqlPool } = require("../config/database");
 const { NatcashTransaction, User, CompanySettings } = require("../models");
-const { generateNatcashPdf } = require("../utils/pdfGenerator");
+const { generateNatcashPdf, generateNatcashReportPdf } = require("../utils/pdfGenerator");
+
+const MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+function buildReportDateRange(query) {
+  const { period = "month", date, month, year } = query;
+  const now = new Date();
+  if (period === "day") {
+    const d = date || now.toISOString().slice(0, 10);
+    const dateObj = new Date(d + "T12:00:00");
+    return {
+      from: `${d} 00:00:00`,
+      to: `${d} 23:59:59`,
+      dateLabel: dateObj.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+    };
+  }
+  const m = String(Number(month || (now.getMonth() + 1))).padStart(2, "0");
+  const y = Number(year || now.getFullYear());
+  const lastDay = new Date(y, Number(m), 0).getDate();
+  return {
+    from: `${y}-${m}-01 00:00:00`,
+    to: `${y}-${m}-${String(lastDay).padStart(2, "0")} 23:59:59`,
+    dateLabel: `${MONTHS_FR[Number(m) - 1]} ${y}`,
+  };
+}
 
 const generateCode = async () => {
   const year = new Date().getFullYear();
@@ -118,4 +142,51 @@ const getNatcashPdf = async (req, res, next) => {
   }
 };
 
-module.exports = { createNatcash, listNatcash, getNatcashPdf };
+const _fetchNatcashReport = async (query) => {
+  const { from, to, dateLabel } = buildReportDateRange(query);
+  const [transactions] = await mysqlPool.query(
+    `SELECT n.*, u.name AS processed_by_name
+     FROM natcash_transactions n
+     LEFT JOIN users u ON u.id = n.processed_by
+     WHERE n.created_at >= ? AND n.created_at <= ?
+     ORDER BY n.created_at ASC`,
+    [from, to]
+  );
+  const total = transactions.length;
+  const total_amount = transactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const breakdown = {};
+  for (const tx of transactions) {
+    if (!breakdown[tx.service_type]) breakdown[tx.service_type] = { count: 0, amount: 0 };
+    breakdown[tx.service_type].count++;
+    breakdown[tx.service_type].amount += Number(tx.amount);
+  }
+  return { dateLabel, period: { from, to }, total, total_amount, breakdown, transactions };
+};
+
+const getNatcashReport = async (req, res, next) => {
+  try {
+    const report = await _fetchNatcashReport(req.query);
+    return res.json({ success: true, ...report });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getNatcashReportPdf = async (req, res, next) => {
+  try {
+    const report = await _fetchNatcashReport(req.query);
+    if (report.total === 0) {
+      return res.status(404).json({ success: false, message: "Aucune transaction pour cette période." });
+    }
+    const [settings] = await CompanySettings.findAll({ limit: 1, raw: true });
+    const buffer = await generateNatcashReportPdf(report, settings || {});
+    const slug = report.dateLabel.replace(/\s+/g, "-").toLowerCase();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="rapport-natcash-${slug}.pdf"`);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { createNatcash, listNatcash, getNatcashPdf, getNatcashReport, getNatcashReportPdf };
