@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
-import { createRecharge, listRecharges, downloadRechargePdf } from "../services/rechargeApi";
+import ThermalPrintModal from "../components/ThermalPrintModal";
+import { createRecharge, downloadRechargePdf, listRecharges } from "../services/rechargeApi";
 import { getStoredUser } from "../utils/auth";
 
 const fmt = (v) =>
@@ -27,7 +28,7 @@ function CompanySelector({ value, onChange }) {
 }
 
 // ─── Success panel ─────────────────────────────────────────────────────────────
-function SuccessPanel({ recharge, onNew }) {
+function SuccessPanel({ recharge, onNew, onReprint }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const companyLabel = recharge.company === "natcom" ? "Natcom" : "Digicel";
 
@@ -49,16 +50,20 @@ function SuccessPanel({ recharge, onNew }) {
         <div className="flex justify-between"><span className="text-slate-500">Montant</span><span className="font-bold text-green-700">{fmt(recharge.amount)}</span></div>
         <div className="flex justify-between"><span className="text-slate-500">Traité par</span><span className="font-semibold">{recharge.processed_by_name}</span></div>
       </div>
-      <div className="flex gap-3">
-        <button onClick={handlePdf} disabled={pdfLoading}
-          className="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60">
-          {pdfLoading ? "Chargement..." : "Télécharger PDF"}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <button onClick={onReprint}
+          className="rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
+          🖨 Réimprimer
         </button>
-        <button onClick={onNew}
-          className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-          Nouvelle recharge
+        <button onClick={handlePdf} disabled={pdfLoading}
+          className="rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60">
+          {pdfLoading ? "..." : "PDF"}
         </button>
       </div>
+      <button onClick={onNew}
+        className="w-full rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+        Nouvelle recharge
+      </button>
     </div>
   );
 }
@@ -118,7 +123,7 @@ function RechargeForm({ onSuccess }) {
 }
 
 // ─── History ───────────────────────────────────────────────────────────────────
-function RechargesHistory() {
+function RechargesHistory({ onPrint }) {
   const [filters, setFilters] = useState({ from: today().slice(0, 7) + "-01", to: today(), company: "" });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -192,10 +197,16 @@ function RechargesHistory() {
                 <td className="px-4 py-3 text-slate-500">{rc.processed_by_name}</td>
                 <td className="px-4 py-3 text-slate-500">{new Date(rc.created_at).toLocaleDateString("fr-FR")}</td>
                 <td className="px-4 py-3">
-                  <button onClick={() => handlePdf(rc.receipt_code)} disabled={pdfLoading === rc.receipt_code}
-                    className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50">
-                    {pdfLoading === rc.receipt_code ? "..." : "PDF"}
-                  </button>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => onPrint(rc)}
+                      className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700">
+                      🖨
+                    </button>
+                    <button onClick={() => handlePdf(rc.receipt_code)} disabled={pdfLoading === rc.receipt_code}
+                      className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50">
+                      {pdfLoading === rc.receipt_code ? "..." : "PDF"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -211,6 +222,12 @@ function Recharges() {
   const user = getStoredUser();
   const canViewHistory = user?.role === "admin" || user?.role === "gestionnaire";
   const [successRc, setSuccessRc] = useState(null);
+  const [printRc, setPrintRc] = useState(null);
+
+  const handleSuccess = (rc) => {
+    setSuccessRc(rc);
+    setPrintRc(rc); // auto-triggers print
+  };
 
   return (
     <AppShell>
@@ -223,12 +240,24 @@ function Recharges() {
       </div>
 
       {successRc ? (
-        <SuccessPanel recharge={successRc} onNew={() => setSuccessRc(null)} />
+        <SuccessPanel
+          recharge={successRc}
+          onNew={() => { setSuccessRc(null); setPrintRc(null); }}
+          onReprint={() => setPrintRc(successRc)}
+        />
       ) : (
-        <RechargeForm onSuccess={setSuccessRc} />
+        <RechargeForm onSuccess={handleSuccess} />
       )}
 
-      {canViewHistory && <RechargesHistory />}
+      {canViewHistory && <RechargesHistory onPrint={setPrintRc} />}
+
+      {printRc && (
+        <ThermalPrintModal
+          type="recharge"
+          data={printRc}
+          onClose={() => setPrintRc(null)}
+        />
+      )}
     </AppShell>
   );
 }

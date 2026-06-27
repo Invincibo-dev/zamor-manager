@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
-import { createNatcash, listNatcash, downloadNatcashPdf } from "../services/natcashApi";
+import ThermalPrintModal from "../components/ThermalPrintModal";
+import { createNatcash, downloadNatcashPdf, listNatcash } from "../services/natcashApi";
 import { getStoredUser } from "../utils/auth";
 
 const fmt = (v) =>
@@ -11,7 +12,7 @@ const TYPE_LABELS = { depot: "Dépôt", retrait: "Retrait", transfert: "Transfer
 const today = () => new Date().toISOString().slice(0, 10);
 
 // ─── Success panel ─────────────────────────────────────────────────────────────
-function SuccessPanel({ transaction, onNew }) {
+function SuccessPanel({ transaction, onNew, onReprint }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const label = TYPE_LABELS[transaction.service_type] || transaction.service_type;
 
@@ -34,16 +35,20 @@ function SuccessPanel({ transaction, onNew }) {
         <div className="flex justify-between"><span className="text-slate-500">Montant</span><span className="font-bold text-green-700">{fmt(transaction.amount)}</span></div>
         <div className="flex justify-between"><span className="text-slate-500">Traité par</span><span className="font-semibold">{transaction.processed_by_name}</span></div>
       </div>
-      <div className="flex gap-3">
-        <button onClick={handlePdf} disabled={pdfLoading}
-          className="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60">
-          {pdfLoading ? "Chargement..." : "Télécharger PDF"}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <button onClick={onReprint}
+          className="rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
+          🖨 Réimprimer
         </button>
-        <button onClick={onNew}
-          className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-          Nouvelle transaction
+        <button onClick={handlePdf} disabled={pdfLoading}
+          className="rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60">
+          {pdfLoading ? "..." : "PDF"}
         </button>
       </div>
+      <button onClick={onNew}
+        className="w-full rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+        Nouvelle transaction
+      </button>
     </div>
   );
 }
@@ -112,7 +117,7 @@ function NatcashForm({ onSuccess }) {
 }
 
 // ─── History ───────────────────────────────────────────────────────────────────
-function NatcashHistory() {
+function NatcashHistory({ onPrint }) {
   const [filters, setFilters] = useState({ from: today().slice(0, 7) + "-01", to: today(), service_type: "" });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -188,10 +193,16 @@ function NatcashHistory() {
                 <td className="px-4 py-3 text-slate-500">{tx.processed_by_name}</td>
                 <td className="px-4 py-3 text-slate-500">{new Date(tx.created_at).toLocaleDateString("fr-FR")}</td>
                 <td className="px-4 py-3">
-                  <button onClick={() => handlePdf(tx.receipt_code)} disabled={pdfLoading === tx.receipt_code}
-                    className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50">
-                    {pdfLoading === tx.receipt_code ? "..." : "PDF"}
-                  </button>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => onPrint(tx)}
+                      className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700">
+                      🖨
+                    </button>
+                    <button onClick={() => handlePdf(tx.receipt_code)} disabled={pdfLoading === tx.receipt_code}
+                      className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50">
+                      {pdfLoading === tx.receipt_code ? "..." : "PDF"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -207,6 +218,12 @@ function Natcash() {
   const user = getStoredUser();
   const canViewHistory = user?.role === "admin" || user?.role === "gestionnaire";
   const [successTx, setSuccessTx] = useState(null);
+  const [printTx, setPrintTx] = useState(null);
+
+  const handleSuccess = (tx) => {
+    setSuccessTx(tx);
+    setPrintTx(tx); // auto-triggers print
+  };
 
   return (
     <AppShell>
@@ -219,12 +236,24 @@ function Natcash() {
       </div>
 
       {successTx ? (
-        <SuccessPanel transaction={successTx} onNew={() => setSuccessTx(null)} />
+        <SuccessPanel
+          transaction={successTx}
+          onNew={() => { setSuccessTx(null); setPrintTx(null); }}
+          onReprint={() => setPrintTx(successTx)}
+        />
       ) : (
-        <NatcashForm onSuccess={setSuccessTx} />
+        <NatcashForm onSuccess={handleSuccess} />
       )}
 
-      {canViewHistory && <NatcashHistory />}
+      {canViewHistory && <NatcashHistory onPrint={setPrintTx} />}
+
+      {printTx && (
+        <ThermalPrintModal
+          type="natcash"
+          data={printTx}
+          onClose={() => setPrintTx(null)}
+        />
+      )}
     </AppShell>
   );
 }

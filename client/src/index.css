@@ -52,3 +52,29 @@ body {
     font-size: 13px;
   }
 }
+
+/* ── Thermal print isolation ───────────────────────────────────────────── */
+/* #print-root is invisible in the browser; only the receipt renders there */
+#print-root {
+  display: none;
+}
+
+@media print {
+  /* Hide the entire app */
+  #root {
+    display: none !important;
+  }
+  /* Show only the thermal receipt */
+  #print-root {
+    display: block !important;
+  }
+  /* 58mm thermal page */
+  @page {
+    size: 58mm auto;
+    margin: 3mm;
+  }
+  body {
+    margin: 0 !important;
+    background: #fff !important;
+  }
+}
