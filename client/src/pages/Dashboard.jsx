@@ -29,13 +29,35 @@ const computeDelta = (current, previous) => {
 
 function KpiCard({ label, value, sub, loading, accent }) {
   return (
-    <article className="rounded-2xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-5 lg:p-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">{label}</p>
-      <p className={`mt-4 text-3xl font-semibold sm:text-4xl ${accent || "text-slate-950"}`}>
+    <article className="rounded-2xl bg-white p-3 shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)] sm:p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold sm:text-3xl ${accent || "text-slate-950"}`}>
         {loading ? "..." : (value ?? "—")}
       </p>
-      {sub ? <p className="mt-2 text-sm text-slate-500">{sub}</p> : null}
+      {sub ? <p className="mt-1 text-xs text-slate-500">{sub}</p> : null}
     </article>
+  );
+}
+
+const fmtHtg = (v) =>
+  `${Number(v || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} HTG`;
+
+function ServiceCard({ icon, label, count, total, accent, loading }) {
+  const unit = count === 1 ? "transaction" : "transactions";
+  return (
+    <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 leading-tight">
+        {icon} {label}
+      </p>
+      <div className="mt-1.5">
+        <p className={`text-base font-bold ${accent}`}>
+          {loading ? "..." : fmtHtg(total)}
+        </p>
+        <p className="text-[10px] text-slate-500">
+          {loading ? "" : `${count} ${unit}`}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -196,7 +218,7 @@ function Dashboard() {
       </section>
 
       {/* KPI cards existants */}
-      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-2 sm:gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Aujourd'hui"
           value={kpi.ventes_jour.nombre}
@@ -228,7 +250,7 @@ function Dashboard() {
       </section>
 
       {/* Nouveaux KPI : bénéfice + stock */}
-      <section className="mt-3 grid gap-3 sm:gap-4 md:grid-cols-3">
+      <section className="mt-2 grid gap-2 sm:gap-3 md:grid-cols-3">
         <KpiCard
           label="Benefice ce mois"
           value={formatCurrency(kpi.benefice_mois)}
@@ -253,24 +275,53 @@ function Dashboard() {
         />
       </section>
 
-      {/* Section Services — Natcash + Recharges */}
+      {/* Section Services — Natcash + Recharges (today only) */}
       {services && (
-        <section className="mt-3 rounded-3xl bg-white p-4 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.22)] sm:p-5">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Services</p>
-          <h3 className="mb-4 text-base font-semibold text-slate-950">Natcash &amp; Recharges — aujourd'hui / ce mois</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Natcash aujourd'hui", value: services.natcash?.today_count ?? 0, sub: formatCurrency(services.natcash?.today_amount ?? 0), accent: "text-orange-600" },
-              { label: "Natcash ce mois", value: services.natcash?.month_count ?? 0, sub: formatCurrency(services.natcash?.month_amount ?? 0), accent: "text-orange-600" },
-              { label: "Recharges aujourd'hui", value: services.recharges?.today_count ?? 0, sub: formatCurrency(services.recharges?.today_amount ?? 0), accent: "text-blue-600" },
-              { label: "Recharges ce mois", value: services.recharges?.month_count ?? 0, sub: formatCurrency(services.recharges?.month_amount ?? 0), accent: "text-blue-600" },
-            ].map((c) => (
-              <div key={c.label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{c.label}</p>
-                <p className={`mt-2 text-2xl font-bold ${c.accent}`}>{c.value}</p>
-                <p className="mt-1 text-sm text-slate-500">{c.sub}</p>
-              </div>
-            ))}
+        <section className="mt-3 rounded-3xl bg-white p-3 shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)] sm:p-4">
+          <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+            Services — aujourd'hui
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <ServiceCard
+              icon="💰"
+              label="Dépôts Natcash"
+              count={services.natcash?.depot?.count ?? 0}
+              total={services.natcash?.depot?.total ?? 0}
+              accent="text-orange-600"
+              loading={loading}
+            />
+            <ServiceCard
+              icon="🔄"
+              label="Transferts Natcash"
+              count={services.natcash?.transfert?.count ?? 0}
+              total={services.natcash?.transfert?.total ?? 0}
+              accent="text-orange-600"
+              loading={loading}
+            />
+            <ServiceCard
+              icon="💸"
+              label="Retraits Natcash"
+              count={services.natcash?.retrait?.count ?? 0}
+              total={services.natcash?.retrait?.total ?? 0}
+              accent="text-orange-600"
+              loading={loading}
+            />
+            <ServiceCard
+              icon="📱"
+              label="Recharge Natcom"
+              count={services.recharges?.natcom?.count ?? 0}
+              total={services.recharges?.natcom?.total ?? 0}
+              accent="text-blue-600"
+              loading={loading}
+            />
+            <ServiceCard
+              icon="📱"
+              label="Recharge Digicel"
+              count={services.recharges?.digicel?.count ?? 0}
+              total={services.recharges?.digicel?.total ?? 0}
+              accent="text-red-600"
+              loading={loading}
+            />
           </div>
         </section>
       )}
