@@ -7,12 +7,16 @@ const appLogger = require("../utils/logger");
 // Sans clés, les push sont silencieusement ignorés (pas d'erreur serveur).
 let vapidReady = false;
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  let subject = process.env.VAPID_SUBJECT || "mailto:admin@zamor.app";
-  if (!subject.startsWith("mailto:") && !subject.startsWith("https://")) {
-    subject = "mailto:" + subject;
+  try {
+    let subject = process.env.VAPID_SUBJECT || "mailto:admin@zamor.app";
+    if (!subject.startsWith("mailto:") && !subject.startsWith("https://")) {
+      subject = "mailto:" + subject;
+    }
+    webpush.setVapidDetails(subject, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+    vapidReady = true;
+  } catch (err) {
+    console.error("[push] VAPID configuration invalide — push désactivé:", err.message);
   }
-  webpush.setVapidDetails(subject, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
-  vapidReady = true;
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
