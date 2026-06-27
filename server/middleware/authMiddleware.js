@@ -4,20 +4,12 @@ const { User } = require("../models");
 
 const protect = async (req, res, next) => {
   try {
-    // Cookie HttpOnly en priorité, fallback sur Authorization Bearer (rétrocompat)
-    let token = req.cookies?.token;
-
-    if (!token) {
-      const authorization = req.headers.authorization || "";
-      if (authorization.startsWith("Bearer ")) {
-        token = authorization.split(" ")[1];
-      }
-    }
+    const token = req.cookies?.token;
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. Token required.",
+        message: "Non authentifié.",
       });
     }
 

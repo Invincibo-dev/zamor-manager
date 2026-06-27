@@ -38,18 +38,15 @@ const generateCode = async () => {
 
 const createRecharge = async (req, res, next) => {
   try {
+    // Validation assurée par validate(rechargeSchema) en amont — req.body est déjà coercé et trimmé
     const { company, phone_number, amount } = req.body;
-
-    if (!["natcom", "digicel"].includes(company)) return res.status(400).json({ success: false, message: "Compagnie invalide (natcom ou digicel)." });
-    if (!phone_number?.trim()) return res.status(400).json({ success: false, message: "Numéro de téléphone requis." });
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ success: false, message: "Montant invalide." });
 
     const receipt_code = await generateCode();
 
     const rc = await Recharge.create({
       company,
-      phone_number: phone_number.trim(),
-      amount: Number(amount),
+      phone_number,
+      amount,
       receipt_code,
       processed_by: req.user.id,
     });
@@ -127,6 +124,14 @@ const getRechargePdf = async (req, res, next) => {
       [code]
     );
     if (!row) return res.status(404).json({ success: false, message: "Recharge introuvable." });
+
+    if (
+      Number(row.processed_by) !== Number(req.user.id) &&
+      req.user.role !== "admin" &&
+      req.user.role !== "gestionnaire"
+    ) {
+      return res.status(403).json({ success: false, message: "Accès non autorisé à ce document." });
+    }
 
     const [settings] = await CompanySettings.findAll({ limit: 1, raw: true });
     const buffer = await generateRechargePdf(row, settings || {});

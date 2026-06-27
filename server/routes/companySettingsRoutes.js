@@ -6,11 +6,11 @@ const {
 } = require("../controllers/companySettingsController");
 const { protect } = require("../middleware/authMiddleware");
 const { adminOnly } = require("../middleware/roleMiddleware");
-const upload = require("../middleware/uploadMiddleware");
+const { upload, checkMagicBytes } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
 router.get("/", protect, getCompanySettings);
-router.put("/", protect, adminOnly, upload.single("logo"), updateCompanySettings);
+router.put("/", protect, adminOnly, upload.single("logo"), checkMagicBytes, updateCompanySettings);
 
 module.exports = router;

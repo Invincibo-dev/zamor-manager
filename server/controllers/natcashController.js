@@ -38,19 +38,15 @@ const generateCode = async () => {
 
 const createNatcash = async (req, res, next) => {
   try {
+    // Validation assurée par validate(natcashSchema) en amont — req.body est déjà coercé et trimmé
     const { phone_number, client_name, amount, service_type } = req.body;
-
-    if (!phone_number?.trim()) return res.status(400).json({ success: false, message: "Numéro de téléphone requis." });
-    if (!client_name?.trim()) return res.status(400).json({ success: false, message: "Nom du client requis." });
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ success: false, message: "Montant invalide." });
-    if (!["depot", "retrait", "transfert"].includes(service_type)) return res.status(400).json({ success: false, message: "Type de service invalide." });
 
     const receipt_code = await generateCode();
 
     const tx = await NatcashTransaction.create({
-      phone_number: phone_number.trim(),
-      client_name: client_name.trim(),
-      amount: Number(amount),
+      phone_number,
+      client_name,
+      amount,
       service_type,
       receipt_code,
       processed_by: req.user.id,
@@ -130,6 +126,14 @@ const getNatcashPdf = async (req, res, next) => {
       [code]
     );
     if (!row) return res.status(404).json({ success: false, message: "Transaction introuvable." });
+
+    if (
+      Number(row.processed_by) !== Number(req.user.id) &&
+      req.user.role !== "admin" &&
+      req.user.role !== "gestionnaire"
+    ) {
+      return res.status(403).json({ success: false, message: "Accès non autorisé à ce document." });
+    }
 
     const [settings] = await CompanySettings.findAll({ limit: 1, raw: true });
     const buffer = await generateNatcashPdf(row, settings || {});

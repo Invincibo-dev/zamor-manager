@@ -58,11 +58,14 @@ app.set("trust proxy", 1);
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      // Requêtes sans origin : apps mobiles, Postman, server-to-server — toujours autorisées
+      if (!origin) return callback(null, true);
+      // Fail fermé : si CLIENT_URL absent, refuser toute origin externe
+      if (allowedOrigins.length === 0) {
+        return callback(new Error("CORS: CLIENT_URL non configuré sur le serveur."));
       }
-
-      return callback(new Error("CORS origin not allowed."));
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS origin non autorisée : ${origin}`));
     },
     credentials: true,
   })
@@ -559,6 +562,10 @@ const ensureSaleReceiptSessionColumn = async () => {
 
 const startServer = async () => {
   try {
+    if (allowedOrigins.length === 0) {
+      appLogger.warn("[SÉCURITÉ] CLIENT_URL non configuré — CORS refusera toutes les origins externes.");
+    }
+
     await verifyDatabaseConnection();
     await sequelize.authenticate();
 

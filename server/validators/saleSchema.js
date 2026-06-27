@@ -3,7 +3,7 @@ const { z } = require("zod");
 const saleItemSchema = z.object({
   nom_produit: z.string().min(1, "nom_produit requis.").max(255),
   quantite: z.coerce.number().int("quantite doit être un entier.").min(1, "quantite doit être >= 1."),
-  prix_unitaire: z.coerce.number().min(0, "prix_unitaire doit être >= 0."),
+  prix_unitaire: z.coerce.number().positive("prix_unitaire doit être > 0."),
   product_id: z.coerce.number().int().positive().nullable().optional(),
   phone_id: z.coerce.number().int().positive().nullable().optional(),
   prix_achat: z.coerce.number().min(0).nullable().optional(),
