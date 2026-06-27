@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
-import { apiFetch } from "../services/api";
+import { API_URL } from "../services/authApi";
+import { jsonOrThrow } from "../utils/fetchUtils";
 import { getStoredUser } from "../utils/auth";
 
 const TABLE_LABELS = {
@@ -69,7 +70,8 @@ export default function AuditLogPage() {
       if (f.action) params.set("action", f.action);
       if (f.from) params.set("from", f.from);
       if (f.to) params.set("to", f.to);
-      const data = await apiFetch(`/api/audit-log?${params}`);
+      const res = await fetch(`${API_URL}/audit-log?${params}`, { credentials: "include" });
+      const data = await jsonOrThrow(res, "Impossible de charger le journal d'audit.");
       setLogs(data.logs ?? []);
       setTotal(data.total ?? 0);
       setPages(data.pages ?? 1);
