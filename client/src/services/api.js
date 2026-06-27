@@ -1,4 +1,5 @@
 import { clearSession } from "../utils/auth";
+import { redirect401 } from "../utils/fetchUtils";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
@@ -21,6 +22,7 @@ const handleResponse = async (response) => {
     if (!response.ok) {
       if (response.status === 401) {
         clearSession();
+        redirect401(401);
       }
 
       throw new Error(data.message || "Request failed.");

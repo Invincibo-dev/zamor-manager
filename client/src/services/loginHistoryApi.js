@@ -1,4 +1,5 @@
 import { API_URL } from "./authApi";
+import { jsonOrThrow } from "../utils/fetchUtils";
 
 export const getLoginHistory = async ({ from, to, success, user_id, page = 1, limit = 50 } = {}) => {
   const query = new URLSearchParams();
@@ -8,11 +9,6 @@ export const getLoginHistory = async ({ from, to, success, user_id, page = 1, li
   if (user_id) query.set("user_id", user_id);
   query.set("page", page);
   query.set("limit", limit);
-
-  const res = await fetch(`${API_URL}/login-history?${query.toString()}`, {
-    credentials: "include",
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Impossible de charger l'historique.");
-  return data;
+  const res = await fetch(`${API_URL}/login-history?${query.toString()}`, { credentials: "include" });
+  return jsonOrThrow(res, "Impossible de charger l'historique.");
 };
