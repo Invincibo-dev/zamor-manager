@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import Layout from "../components/Layout";
+import AppShell from "../components/AppShell";
 import { apiFetch } from "../services/api";
 import { getStoredUser } from "../utils/auth";
 
@@ -92,26 +92,20 @@ export default function AuditLogPage() {
 
   if (user?.role !== "admin") {
     return (
-      <Layout>
+      <AppShell title="Journal d'audit" subtitle="Accès restreint">
         <div className="flex h-64 items-center justify-center text-slate-500">
           Accès réservé aux administrateurs.
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   return (
-    <Layout>
+    <AppShell title="Journal d'audit" subtitle="Toutes les opérations sur les données financières — lecture seule.">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-5">
-          <h1 className="text-xl font-bold text-slate-900">Journal d'audit</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Toutes les opérations sur les données financières — lecture seule.
-          </p>
-        </div>
 
         {/* Filtres */}
-        <div className="mb-4 flex flex-wrap gap-3">
+        <div className="mb-4 flex flex-wrap gap-3 pt-4">
           <select
             value={filters.table_name}
             onChange={(e) => handleFilter("table_name", e.target.value)}
@@ -261,6 +255,6 @@ export default function AuditLogPage() {
           </div>
         )}
       </div>
-    </Layout>
+    </AppShell>
   );
 }
